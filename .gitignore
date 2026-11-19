@@ -1,0 +1,16 @@
+
+# UAT screenshots (local only)
+uat/
+tests/__pycache__/
+__pycache__/
+site_demo/
+
+# Built by tests and local dry runs; the real ones live in the private index repo
+command_center.html
+CONTROL.md
+control/
+reports/
+stats.yml
+tasks.yml
+metrics.csv
+uat_results.json

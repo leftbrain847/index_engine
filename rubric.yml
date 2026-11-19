@@ -1,0 +1,191 @@
+# The bar every repo is held to. One strict standard; less is more.
+# Edit freely: turn checks off, change severity, reword prompts. Code only implements detection.
+#
+# severity: critical | high | medium | low
+# prompt: pasted into a Claude Code session opened on the repo. Placeholders: {repo} {branch} {default}
+#         {detail} {paths} {count}; vulnerable-* checks also {package} {version} {fix} {snapshot}
+
+settings:
+  category_order: [security, lost-work, reliability, reuse]   # what you see first
+  rank_by: severity        # severity = 🔴 before 🟠 before 🟡, category order within each; category = strict category order
+  always_surface:                 # categories that flow into the queue even from inactive projects, at or above this severity
+    security: high
+  severity_weight: {critical: 40, high: 15, medium: 6, low: 2}
+  grades: {A: 90, B: 75, C: 55, D: 35}                       # score floors; below D = F
+  stale_branch_days: 14
+  sprint: {start: 2026-11-01, end: 2026-11-30}
+  tabs: [now, queue, lost-work, health, sprint, toolbox, cleanup, portfolio, guide]   # reorder or drop tabs here
+  sla_days: {critical: 2, high: 7, medium: 30, low: 90}   # fix-within targets; age counts from first_seen
+  history_start: 2026-11-04       # first_seen for findings that existed before aging was tracked
+  timezone: America/New_York
+
+checks:
+  # ---------- security ----------
+  secret-in-tree:
+    category: security
+    severity: critical
+    title: Secret committed in current files
+    why: Anything in the repo is readable by everyone with access, forever. Rotate first, then remove.
+    prompt: |
+      In {repo}, a likely secret ({detail}) is committed at {paths}. First, tell me which service it belongs to so I can rotate it — do not print the value. Then remove it from the code, load it from an environment variable or GitHub secret instead, add the file pattern to .gitignore, and add a .env.example with placeholder values. Open a PR.
+  secret-in-history:
+    category: security
+    severity: high
+    title: Secret in git history (deleted but still readable)
+    why: Deleting a file does not remove it from history. Rotation is the fix; rewriting history is optional.
+    prompt: |
+      In {repo}, a likely secret ({detail}) exists in git history at {paths} but not in the current files. Tell me which service it belongs to so I can rotate it — do not print the value. Do not rewrite history unless I confirm. Add a gitleaks or similar secret-scan step to CI so this can't recur. Open a PR.
+  public-sensitive:
+    category: security
+    severity: high
+    title: Public repo with credential or environment files
+    why: Public repos are indexed by scrapers within minutes; config files are the first thing they read.
+    prompt: |
+      {repo} is public and contains {paths}. Review whether these files expose anything sensitive and whether the repo should be private. Summarize for me before changing anything; if safe, make sure only placeholder values remain. Open a PR.
+  vulnerable-dependency:         # severity comes from the advisory (GitHub rating, else CVSS); this is the fallback
+    category: security
+    severity: medium
+    title: Library with a known vulnerability
+    why: A published advisory (OSV) covers this exact version. Attackers scan for these; the fix is usually a version bump.
+    prompt: |
+      In {repo}: {detail}. Found in: {paths}.
+      First, in one line, say whether the vulnerable code can actually be reached in how this repo uses {package} (e.g. server-only or build-time code in a static page can't be). Then update {package} from {version} to {fix} (or the lowest version that clears every advisory listed) wherever it is pinned: lockfile, requirements, or CDN link. Keep the change minimal, run the tests, and open any changed web page in a browser to confirm it still works.
+      If the path is site_deps.yml (the public sites' dependency list in leftbrain847/index), change that entry's url, version, osv and license_files, run `python tools/vendor.py lock`, build the site and run `python tools/site_check.py` on it.
+      If there is no fixed version, propose a mitigation or a replacement and change nothing until I choose. Open a PR.
+  vulnerable-frozen-snapshot:    # a day build that is frozen on purpose; never edited
+    category: security
+    severity: medium
+    title: Frozen day snapshot pins a vulnerable library
+    why: The snapshot itself must never change, but its published copy can load a patched version or be held back.
+    prompt: |
+      The frozen day snapshot "{snapshot}" ({paths}) loads {package} {version}: {detail}.
+      Never edit the snapshot. Work in leftbrain847/index, on the published copy only:
+      1. Say whether the advisory can be triggered in this static page (it can't if it needs server-side or Node-only code, a build tool, or input the page never takes). If it can't, say why and recommend I dismiss this; change nothing.
+      2. If it can: add {package} {fix} to site_deps.yml (pinned url, osv, license_files) plus a `rewrites` entry that maps the page's old {package} URL to the new local copy, run `python tools/vendor.py lock`, build the sprint site, run `python tools/site_check.py` on it, and compare the page with the original in a browser.
+      3. If the patched version breaks the page, revert that and instead set `public_day: false` on the sprint_log entry (the day build is held back from the public site) and say what broke.
+      Open a PR.
+  no-lockfile:
+    category: security
+    severity: medium
+    title: Dependencies not locked
+    why: Without a lockfile, every install can pull different (possibly compromised) versions.
+    prompt: |
+      {repo} declares dependencies in {paths} but has no lockfile. Generate and commit the lockfile for the existing package manager, pin unpinned Python requirements with exact versions, and make CI install from the lockfile. Open a PR.
+  no-dependency-updates:
+    category: security
+    severity: low
+    title: No automated dependency updates
+    why: Dependabot opens PRs when a dependency has a known vulnerability; without it you find out late.
+    prompt: |
+      Add .github/dependabot.yml to {repo} covering {detail}, weekly schedule, grouped minor/patch updates. Open a PR.
+  no-gitignore:
+    category: security
+    severity: low
+    title: No .gitignore
+    why: The most common way secrets and build junk get committed.
+    prompt: |
+      Add a .gitignore to {repo} suited to its stack (include .env, virtualenvs, node_modules, build output, OS files). Open a PR.
+
+  # ---------- lost work ----------
+  main-is-hollow:
+    category: lost-work
+    severity: critical
+    title: Default branch is nearly empty; the real work is on a branch
+    why: Anyone (including future Claude sessions) opening the repo sees almost nothing. Work that isn't on main is work you'll lose.
+    prompt: |
+      In {repo}, the default branch `{default}` is nearly empty while `{branch}` holds the work ({detail}). Review `{branch}`, make sure it runs, and open a PR merging it into `{default}`. Summarize what the PR brings in.
+  unmerged-stale:
+    category: lost-work
+    severity: high
+    title: Unmerged branch going cold
+    why: Session branches older than two weeks rarely get merged unless someone decides to.
+    prompt: |
+      In {repo}, branch `{branch}` has {detail} and hasn't been touched in a while. Summarize what it contains and recommend one of: merge into `{default}`, cherry-pick parts, or delete. Don't act until I choose; if I say merge, open a PR.
+  unmerged-active:
+    category: lost-work
+    severity: medium
+    title: Unmerged work in progress
+    why: Recent session work not yet on main. Fine for now; merge or close it before it goes cold.
+    prompt: |
+      In {repo}, branch `{branch}` has {detail}. If it's in a working state, open a PR merging it into `{default}` with a summary; otherwise list what's left to finish.
+  pending-bot-prs:
+    category: lost-work
+    severity: low
+    title: Dependency update branches never merged
+    why: Bot branches pile up and go stale; each is a skipped security or bug fix.
+    prompt: |
+      In {repo}, these dependency-update branches were never merged: {detail}. Check each still applies, run tests, and merge the safe ones via PR; tell me which you skipped and why.
+  todo-debt:
+    category: lost-work
+    severity: low
+    title: TODO / FIXME notes in code
+    why: TODOs are decisions deferred to nobody. Either do them, ticket them, or delete them.
+    prompt: |
+      {repo} has {count} TODO/FIXME notes ({paths}). List each with a one-line recommendation (do now / defer / delete). Fix the ones that take under 10 minutes and open a PR; leave the rest listed in the PR description.
+
+  # ---------- reliability ----------
+  no-tests:
+    category: reliability
+    severity: high
+    title: No automated tests
+    why: Your daily-ship definition requires a passing test. Without one, nothing proves it still works.
+    prompt: |
+      {repo} has no automated tests (checked branch `{branch}`). Add a minimal test suite for its core behavior using the stack's standard runner — at least one end-to-end test of the main path — plus the command to run it in the README. Open a PR.
+  no-ci:
+    category: reliability
+    severity: medium
+    title: No CI
+    why: Tests that only run when someone remembers are tests that stop running.
+    prompt: |
+      Add a GitHub Actions workflow to {repo} that installs from a clean checkout and runs the tests on every push and PR. Use pinned action versions. Open a PR.
+  ci-skips-tests:
+    category: reliability
+    severity: medium
+    title: CI exists but doesn't run the tests
+    why: A green check that doesn't test anything is worse than no check.
+    prompt: |
+      {repo} has tests and a CI workflow ({paths}), but CI doesn't appear to run the tests. Make CI run them on every push and PR. Open a PR.
+  no-readme-run:
+    category: reliability
+    severity: medium
+    title: README doesn't say how to run it
+    why: Running from a clean clone requires knowing the commands. Future-you is a stranger.
+    prompt: |
+      Update {repo}'s README with: one-line purpose, prerequisites, exact commands to install, run and test from a clean clone, and where it's deployed (if anywhere). Verify the commands actually work. Open a PR.
+  no-agent-guide:
+    category: reliability
+    severity: low
+    title: No CLAUDE.md
+    why: Every session starts cold without it — conventions, commands and decisions get re-discovered each time.
+    prompt: |
+      Create a CLAUDE.md for {repo}: purpose, layout, how to run and test, conventions, key decisions, and what not to touch. Keep it under 80 lines and grounded in the actual code. Open a PR.
+
+  # ---------- reuse & sprawl ----------
+  empty-repo:
+    category: reuse
+    severity: medium
+    title: Empty repo
+    why: Empty repos are noise in every list you look at.
+    prompt: |
+      {repo} is empty. No session needed — decide whether to delete it on GitHub (Settings → Danger zone) or give it a first commit.
+  duplicate-lineage:
+    category: reuse
+    severity: medium
+    title: Duplicate of another repo
+    why: Parallel copies drift; fixes land in one and not the other.
+    prompt: |
+      {repo} shares history or purpose with {detail}. Compare them and recommend which one is canonical, what (if anything) to port across, and which to archive. Don't change anything until I choose.
+  copied-skill:
+    category: reuse
+    severity: medium
+    title: Skill copied instead of referenced
+    why: Copies of shared machinery go stale; your rule is skills are referenced, not copied.
+    prompt: |
+      {repo} contains a copy of a skill that also lives in {detail} ({paths}). Replace the copy with a reference to the canonical skill (pinned version), and open a PR.
+  public-no-license:
+    category: reuse
+    severity: low
+    title: Public repo without a license
+    why: Without a license nobody (including employers reviewing your portfolio) can legally reuse it.
+    prompt: |
+      Add a LICENSE to {repo} (MIT unless I say otherwise) and a license line in the README. Open a PR.

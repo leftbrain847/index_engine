@@ -1,0 +1,34 @@
+# Automated UAT: every build is opened in a real browser and held to these checks.
+# Edit thresholds, turn checks off, change severity. uat.py only implements them.
+
+viewports:
+  phone: {width: 390, height: 844, mobile: true}
+  desktop: {width: 1280, height: 800, mobile: false}
+
+emulate_artifact_host: true   # snapshots are used as Claude artifacts: add the viewport tag the viewer adds
+settle_ms: 1200            # wait after load before judging (animations, async boot)
+workers: 4                 # pages checked at once (one browser each); 1 = one at a time
+click_limit: 8             # how many visible buttons/tabs to tap in the interaction pass
+allowed_hosts:             # external loads that are fine (CDNs an artifact may use)
+  - cdnjs.cloudflare.com
+  - cdn.jsdelivr.net
+  - unpkg.com
+  - fonts.googleapis.com
+  - fonts.gstatic.com
+  - de1.api.radio-browser.info     # world_radio's station directory (data only); same hosts as index.yml allow_data_hosts
+  - nl1.api.radio-browser.info
+  - at1.api.radio-browser.info
+  - i.ytimg.com                    # Trending Five's YouTube thumbnails (images only)
+
+checks:
+  js-errors:          {severity: critical, title: "JavaScript errors on load"}
+  blank-render:       {severity: critical, title: "Page renders blank", min_text_chars: 20}
+  interaction-errors: {severity: high,     title: "Errors after tapping controls"}
+  console-errors:     {severity: high,     title: "Console errors"}
+  failed-requests:    {severity: high,     title: "Resources fail to load"}
+  horizontal-overflow: {severity: high,    title: "Wider than a phone screen", tolerance_px: 2}
+  small-tap-targets:  {severity: medium,   title: "Tap targets under 44px", min_px: 44, allow: 2}
+  external-hosts:     {severity: medium,   title: "Loads from hosts outside the allowlist"}
+  no-viewport-meta:   {severity: medium,   title: "No mobile viewport tag"}
+  slow-load:          {severity: low,      title: "Slow to load", max_ms: 3000}
+  title-mismatch:     {severity: low,      title: "Page title doesn't match the dated name"}

@@ -1,0 +1,23 @@
+name: ci
+# PRs get tested once (pull_request); main is tested again after each merge. Branch pushes alone don't run CI:
+# with both triggers every PR push ran the suite twice. A newer push to the same PR cancels the older run.
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - run: pip install -q -r requirements-ci.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: pytest -q

@@ -1,0 +1,4 @@
+# Exact pins for CI and the nightly refresh. Bump deliberately, in a PR.
+pyyaml==6.0.3
+pytest==9.1.1
+playwright==1.63.0
