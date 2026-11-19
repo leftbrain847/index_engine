@@ -8,9 +8,10 @@ site_demo/
 # Built by tests and local dry runs; the real ones live in the private index repo
 command_center.html
 CONTROL.md
-control/
-reports/
+/control
+/reports
 stats.yml
 tasks.yml
 metrics.csv
 uat_results.json
+run_log.txt

@@ -1,0 +1,25 @@
+# Where the engine (this public repo) meets J's private data repo. Read by .github/workflows/refresh.yml and
+# tests/test_split.py. The refresh works in a checkout of this repo, copies `inputs` in from the data repo (replacing
+# the made-up demo copies), runs the engine, then copies `outputs` back and commits them there.
+data_repo: index          # private repo under the same owner
+inputs:                   # copied from the data repo before the run (missing ones are skipped)
+  - index.yml
+  - findings.json
+  - stats.yml
+  - tasks.yml
+  - metrics.csv
+  - uat_results.json
+  - snapshots
+outputs:                  # copied back and committed to the data repo after the run
+  - stats.yml
+  - CONTROL.md
+  - control
+  - reports
+  - findings.json
+  - tasks.yml
+  - metrics.csv
+  - uat_results.json
+  - command_center.html
+  - run_log.txt
+run_log: run_log.txt      # private run log: everything the engine prints (tools/quiet.sh); the public log gets one line per step
+commit_subject: "index: nightly refresh"   # the gate job looks for "<commit_subject> <UTC date>" to skip the backup run
