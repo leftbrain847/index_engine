@@ -15,3 +15,4 @@ tasks.yml
 metrics.csv
 uat_results.json
 run_log.txt
+/snapshots

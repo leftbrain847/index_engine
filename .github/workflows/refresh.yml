@@ -1,0 +1,192 @@
+name: refresh-index
+# Nightly: clone every repo J owns, run the engine on the private data from `index` (split.yml), commit the results
+# back to `index`, and publish the public sites. This repo is public, so its logs are too: every step that touches
+# private data runs through tools/quiet.sh, which sends the output to the private run log (run_log.txt in `index`)
+# and prints one status line here.
+#
+# Secrets (fine-grained PATs, owner leftbrain847):
+#   INDEX_READ_TOKEN  = all repositories, Contents: Read-only
+#   INDEX_WRITE_TOKEN = only `index`, Contents: Read and write
+#   SITE_TOKEN        = only the site repos (leftbrain847.github.io, november_sprint), Contents: Read and write
+# Only this workflow uses them. It has no pull_request trigger, so code from a fork never runs with them.
+on:
+  # GitHub starts scheduled runs late when it's busy. 6:13am ET is a backup in case the 4:13am run is dropped:
+  # the gate job skips it when today's refresh already landed in `index`.
+  schedule:
+    - cron: "13 9 * * *"    # 4:13am ET (EST); 5:13am during EDT
+    - cron: "13 11 * * *"   # 6:13am ET backup; the gate job's `if` repeats this string
+  workflow_dispatch:         # "Run workflow" button, for when J asks to see a change live sooner
+permissions:
+  contents: read             # GITHUB_TOKEN only reads this repo; `index` and the sites use the PATs above
+concurrency:
+  group: refresh-index
+  cancel-in-progress: false
+env:
+  DATA_REPO: index                            # = split.yml data_repo (tests/test_refresh_workflow.py checks)
+  REFRESH_SUBJECT: "index: nightly refresh"   # = split.yml commit_subject
+jobs:
+  gate:
+    # Only the backup schedule runs this: did the 4:13am run already commit to `index` today (UTC)?
+    if: github.event.schedule == '13 11 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ secrets.INDEX_READ_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -uo pipefail
+          today=$(date -u +%F)
+          # From 09:00 UTC: the 4:13am run is scheduled at 09:13 UTC, so evening runs (after 00:00 UTC) don't count.
+          if ! n=$(gh api "repos/$OWNER/$DATA_REPO/commits?sha=main&since=${today}T09:00:00Z&per_page=100" \
+                --jq "[.[] | select(.commit.message | startswith(\"$REFRESH_SUBJECT $today\"))] | length" 2>/dev/null); then
+            echo "::warning::couldn't check for today's refresh; backup runs"; echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ "$n" -gt 0 ]; then echo "already refreshed today; backup skipped"; echo "run=false" >> "$GITHUB_OUTPUT"
+          else echo "no refresh today yet; backup runs"; echo "run=true" >> "$GITHUB_OUTPUT"; fi
+  refresh:
+    needs: gate
+    # gate is skipped on the main schedule and manual runs (no output: refresh runs). Fails open.
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35   # the publish gate opens every page in a browser
+    env:
+      OWNER: ${{ github.repository_owner }}
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          path: engine
+          persist-credentials: false
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          repository: ${{ github.repository_owner }}/index
+          token: ${{ secrets.INDEX_WRITE_TOKEN }}
+          path: data
+          persist-credentials: false   # the write token is never left on disk for the engine to find
+      - name: Install tools
+        run: |
+          pip install -q -r requirements-ci.txt
+          python -m playwright install --with-deps chromium > /dev/null
+      - name: Bring in the private data
+        run: |
+          echo "LOG=$PWD/$(python -c "import yaml;print(yaml.safe_load(open('split.yml'))['run_log'])")" >> "$GITHUB_ENV"
+          python tools/split.py copy-in ../data
+      - name: Clone every repo
+        env:
+          GH_TOKEN: ${{ secrets.INDEX_READ_TOKEN }}
+        run: |
+          tools/quiet.sh "$LOG" clone tools/clone_all.sh "$RUNNER_TEMP/scan"
+          n=$(cat "$RUNNER_TEMP/clone_failures" 2>/dev/null || echo 0)
+          if [ "$n" -gt 0 ]; then echo "::warning::$n repos failed to clone (names in the run log)"; fi
+      - name: Rebuild index, grade repos, UAT, pages
+        run: tools/quiet.sh "$LOG" regenerate tools/regenerate.sh "$RUNNER_TEMP/scan"
+      - name: Commit the results to the private repo
+        env:
+          INDEX_WRITE_TOKEN: ${{ secrets.INDEX_WRITE_TOKEN }}
+          SCRUB_READ_TOKEN: ${{ secrets.INDEX_READ_TOKEN }}   # only to blank it out of the run log
+          SCRUB_SITE_TOKEN: ${{ secrets.SITE_TOKEN }}
+        run: |
+          set -euo pipefail
+          b64=$(printf 'x-access-token:%s' "$INDEX_WRITE_TOKEN" | base64 -w0)
+          echo "::add-mask::$b64"
+          auth="Authorization: basic $b64"          # a shell variable: not passed to anything this step starts
+          clean=(env -u INDEX_WRITE_TOKEN -u SCRUB_READ_TOKEN -u SCRUB_SITE_TOKEN)   # engine runs never see the tokens
+          outputs=$("${clean[@]}" python tools/split.py outputs)
+          # If edits land on `index` mid-run, never overwrite them and never drop the refresh: start again from its
+          # latest main and regenerate on top (the clones are already here, so it's quick).
+          for attempt in 1 2 3; do
+            python tools/split.py scrub "$LOG" INDEX_WRITE_TOKEN SCRUB_READ_TOKEN SCRUB_SITE_TOKEN
+            "${clean[@]}" python tools/split.py copy-out ../data
+            cd ../data
+            git config user.name "index-bot"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            for p in $outputs; do [ -e "$p" ] && git add -A -- "$p"; done
+            if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+            git commit -q -m "$REFRESH_SUBJECT $(date -u +%F)"
+            if git -c "http.extraheader=$auth" push -q origin HEAD:main 2>/dev/null; then echo "pushed (attempt $attempt)"; exit 0; fi
+            echo "::notice::the private repo moved during the run (attempt $attempt); regenerating on top of it"
+            git -c "http.extraheader=$auth" fetch -q origin main
+            git reset -q --hard origin/main
+            cd ../engine
+            "${clean[@]}" python tools/split.py copy-in ../data
+            "${clean[@]}" tools/quiet.sh "$LOG" regenerate tools/regenerate.sh "$RUNNER_TEMP/scan"
+          done
+          echo "::error::could not push the refresh after 3 tries; nothing was overwritten, rerun the workflow"
+          exit 1
+      - name: Publish the public sites (sprint + homepage)
+        # Only checked pages (tools/build_site.py, tools/build_showcase.py). A site whose pages load a third-party
+        # file that is neither self-hosted nor pinned by hash, or that breaks in a browser, is not pushed (the live
+        # site keeps its last good version) and the step fails. Check details go to the private run log.
+        env:
+          SITE_TOKEN: ${{ secrets.SITE_TOKEN }}
+        run: |
+          set -euo pipefail
+          site_token="${SITE_TOKEN:-}"; unset SITE_TOKEN   # a shell variable from here on: the checks below never see it
+          sites=$(python -c "import yaml;c=yaml.safe_load(open('index.yml'))['config'];[print(r, d) for r, d in ((c['site'].get('repo'), 'site'), ((c.get('showcase') or {}).get('repo'), 'showcase')) if r]")
+          failed=""
+          while read -r site_repo dir; do
+            [ -n "$site_repo" ] && [ -d "$RUNNER_TEMP/$dir" ] || continue
+            if ! tools/quiet.sh "$RUNNER_TEMP/site_check.log" "check $site_repo" python tools/site_check.py "$RUNNER_TEMP/$dir"; then
+              failed="$failed $site_repo"; continue
+            fi
+            if [ -z "$site_token" ]; then echo "::notice::SITE_TOKEN not set; $site_repo checked but not published"; continue; fi
+            b64=$(printf 'x-access-token:%s' "$site_token" | base64 -w0)
+            echo "::add-mask::$b64"
+            auth="Authorization: basic $b64"
+            url="https://github.com/$OWNER/$site_repo"
+            if ! git -c "http.extraheader=$auth" ls-remote "$url" >/dev/null 2>&1; then
+              echo "::notice::$site_repo doesn't exist yet or isn't in SITE_TOKEN; skipped"; continue
+            fi
+            # one site failing (check, clone or push) never stops the other; the step fails at the end.
+            # `|| exit 1` on each line: set -e does not apply inside a subshell tested by `if !`.
+            if ! (
+              rm -rf "$RUNNER_TEMP/pub" || exit 1
+              git -c "http.extraheader=$auth" clone -q --depth 1 "$url" "$RUNNER_TEMP/pub" || exit 1
+              cd "$RUNNER_TEMP/pub" || exit 1
+              find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} + || exit 1
+              cp -a "$RUNNER_TEMP/$dir/." . || exit 1
+              git add -A || exit 1
+              if git diff --cached --quiet; then echo "$site_repo unchanged"; exit 0; fi
+              git -c user.name=index-bot -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "site $(date -u +%F)" || exit 1
+              git -c "http.extraheader=$auth" push -q origin HEAD:main || exit 1   # Pages serves main
+              echo "published $(find . -name '*.html' -not -path './.git/*' | wc -l) pages to $site_repo"
+            ); then failed="$failed $site_repo"; fi
+          done <<< "$sites"
+          if [ -n "$failed" ]; then
+            echo "::error::not published:$failed (the live sites keep their last good version; details in the run log)"
+            exit 1
+          fi
+      - name: Keep the run log when something failed
+        # The public log only says which step failed; the details are in this commit to the private repo.
+        if: failure()
+        env:
+          INDEX_WRITE_TOKEN: ${{ secrets.INDEX_WRITE_TOKEN }}
+          SCRUB_READ_TOKEN: ${{ secrets.INDEX_READ_TOKEN }}
+          SCRUB_SITE_TOKEN: ${{ secrets.SITE_TOKEN }}
+        run: |
+          set -uo pipefail
+          LOG="${LOG:-$PWD/run_log.txt}"
+          [ -f "$LOG" ] || echo "failed before the engine ran; see which step failed in the public log" > "$LOG"
+          [ -f "$RUNNER_TEMP/site_check.log" ] && cat "$RUNNER_TEMP/site_check.log" >> "$LOG"
+          python tools/split.py scrub "$LOG" INDEX_WRITE_TOKEN SCRUB_READ_TOKEN SCRUB_SITE_TOKEN
+          b64=$(printf 'x-access-token:%s' "$INDEX_WRITE_TOKEN" | base64 -w0)
+          echo "::add-mask::$b64"
+          auth="Authorization: basic $b64"
+          cd ../data || { echo "::warning::no private checkout; run log not saved"; exit 0; }
+          git -c "http.extraheader=$auth" fetch -q origin main || { echo "::warning::could not save the run log"; exit 0; }
+          git reset -q --hard origin/main
+          cp "$LOG" "$(basename "$LOG")"
+          git add -- "$(basename "$LOG")"
+          if git -c user.name=index-bot -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+               commit -q -m "index: refresh failed $(date -u +%F)" \
+             && git -c "http.extraheader=$auth" push -q origin HEAD:main 2>/dev/null; then
+            echo "run log saved to the private repo"
+          else
+            echo "::warning::could not save the run log"
+          fi

@@ -74,3 +74,10 @@ def test_outputs_are_ignored_here_so_a_run_can_never_commit_them_to_this_repo():
                              capture_output=True, text=True).stdout.split()
     missing = [p for p in SPLIT["outputs"] if p not in ignored and p != "findings.json"]   # findings.json: demo copy
     assert not missing, f"add to .gitignore: {missing}"
+
+
+def test_inputs_are_ignored_here_too_except_the_demo_copies():
+    ignored = subprocess.run(["git", "check-ignore", "--no-index", *SPLIT["inputs"]], cwd=ROOT,
+                             capture_output=True, text=True).stdout.split()
+    missing = [p for p in SPLIT["inputs"] if p not in ignored and p not in ("index.yml", "findings.json")]
+    assert not missing, f"add to .gitignore: {missing}"
