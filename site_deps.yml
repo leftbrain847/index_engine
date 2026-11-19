@@ -1,0 +1,149 @@
+# Third-party files the public sites may load (sprint site + homepage). The ONLY source of vendored copies.
+#
+# Each dep is pinned: its url names an exact version (Google Fonts: the lock pins every font file's
+# versioned fonts.gstatic.com URL and hash). After adding or changing a dep, run
+#     python tools/vendor.py lock
+# which downloads each file once, records its SHA-384 in site_deps.lock.json, and commit both files.
+# At publish time every copy is re-downloaded and must match the lock, or it is not used.
+#
+#   name/version   shown in the license notices; local copy goes to vendor/<name>/<version>/<file>
+#   url            exactly as pages write it; every occurrence is rewritten to the local copy
+#   license        SPDX id; license_files = pinned URLs of the license/notice texts shipped with the copy
+#   osv            package + ecosystem for the nightly vulnerability check (omit for fonts)
+#   kind: google-fonts   a fonts.googleapis.com/css2 URL; its CSS and font files are self-hosted together
+#
+# Files over config.vendor.max_self_host_mb (index.yml) stay on the CDN (see tools/vendor.py).
+
+deps:
+  - name: three
+    version: r128
+    url: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
+    license: MIT
+    license_files: [https://cdn.jsdelivr.net/npm/three@0.128.0/LICENSE]
+    osv: {ecosystem: npm, package: three, version: 0.128.0}
+
+  - name: tone
+    version: 15.1.22
+    url: https://cdnjs.cloudflare.com/ajax/libs/tone/15.1.22/Tone.js
+    license: MIT
+    license_files: [https://cdn.jsdelivr.net/npm/tone@15.1.22/LICENSE.md]
+    osv: {ecosystem: npm, package: tone, version: 15.1.22}
+
+  - name: tone
+    version: 14.8.49
+    url: https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js
+    license: MIT
+    license_files: [https://cdn.jsdelivr.net/npm/tone@14.8.49/LICENSE.md]
+    osv: {ecosystem: npm, package: tone, version: 14.8.49}
+
+  - name: highlight.js
+    version: 11.11.1
+    url: https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js
+    license: BSD-3-Clause
+    license_files: [https://cdn.jsdelivr.net/npm/highlight.js@11.11.1/LICENSE]
+    osv: {ecosystem: npm, package: highlight.js, version: 11.11.1}
+
+  - name: highlight.js-python
+    version: 11.11.1
+    url: https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/python.min.js
+    license: BSD-3-Clause
+    license_files: [https://cdn.jsdelivr.net/npm/highlight.js@11.11.1/LICENSE]
+
+  - name: highlight.js-sql
+    version: 11.11.1
+    url: https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/sql.min.js
+    license: BSD-3-Clause
+    license_files: [https://cdn.jsdelivr.net/npm/highlight.js@11.11.1/LICENSE]
+
+  - name: echarts
+    version: 6.1.0
+    url: https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js
+    license: Apache-2.0
+    license_files: [https://cdn.jsdelivr.net/npm/echarts@6.1.0/LICENSE, https://cdn.jsdelivr.net/npm/echarts@6.1.0/NOTICE]
+    osv: {ecosystem: npm, package: echarts, version: 6.1.0}
+
+  # Google Fonts: same files Google serves (Chrome's woff2 set), from your own site. License texts come
+  # from the Fontsource package of the same family (OFL-1.1).
+  - name: fonts-pinball
+    kind: google-fonts
+    url: https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Condensed:wght@500;700&display=swap
+    license: OFL-1.1
+    license_files: [https://cdn.jsdelivr.net/npm/@fontsource/bungee@5.3.0/LICENSE,
+                    https://cdn.jsdelivr.net/npm/@fontsource/barlow-condensed@5.3.0/LICENSE]
+
+  - name: fonts-instrument-serif-plex-mono
+    kind: google-fonts
+    url: https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap
+    license: OFL-1.1
+    license_files: [https://cdn.jsdelivr.net/npm/@fontsource/instrument-serif@5.3.0/LICENSE,
+                    https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.3.0/LICENSE]
+
+  - name: fonts-project-index
+    kind: google-fonts
+    url: https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap
+    license: OFL-1.1
+    license_files: [https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.3.0/LICENSE,
+                    https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-sans@5.3.0/LICENSE]
+
+  - name: fonts-field-guide
+    kind: google-fonts
+    url: https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,750&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap
+    license: OFL-1.1
+    license_files: [https://cdn.jsdelivr.net/npm/@fontsource/bricolage-grotesque@5.3.0/LICENSE,
+                    https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-sans@5.3.0/LICENSE,
+                    https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.3.0/LICENSE]
+
+  - name: fonts-linear-algebra
+    kind: google-fonts
+    url: https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@500;700&display=swap
+    license: OFL-1.1
+    license_files: [https://cdn.jsdelivr.net/npm/@fontsource/bricolage-grotesque@5.3.0/LICENSE,
+                    https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.3.0/LICENSE]
+
+  - name: fonts-lull
+    kind: google-fonts
+    url: https://fonts.googleapis.com/css2?family=Marcellus&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap
+    license: OFL-1.1
+    license_files: [https://cdn.jsdelivr.net/npm/@fontsource/marcellus@5.3.0/LICENSE,
+                    https://cdn.jsdelivr.net/npm/@fontsource/figtree@5.3.0/LICENSE,
+                    https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.3.0/LICENSE]
+
+  # ASL Translator (repo ASL_translator, web/asl-translator.html): MediaPipe hand + pose tracking, loaded by code
+  # only after the viewer allows the camera. The loader script is small (self-hosted); the WebAssembly runtime and
+  # both models are large and stay on their CDN, checked nightly against this lock. 0.10.35 is pinned on purpose:
+  # MediaPipe 1.x posts usage logs to odml.pa.googleapis.com. Models: Google's MediaPipe model cards list them as
+  # Apache-2.0 (not re-checked in this change; verify before relying on it).
+  - name: mediapipe-tasks-vision-loader
+    version: 0.10.35
+    url: https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm/vision_wasm_internal.js
+    license: Apache-2.0
+    license_files: [https://cdn.jsdelivr.net/gh/google-ai-edge/mediapipe@v0.10.35/LICENSE]
+    osv: {ecosystem: npm, package: '@mediapipe/tasks-vision', version: 0.10.35}
+
+  - name: mediapipe-tasks-vision-wasm
+    version: 0.10.35
+    url: https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm/vision_wasm_internal.wasm
+    license: Apache-2.0
+    license_files: [https://cdn.jsdelivr.net/gh/google-ai-edge/mediapipe@v0.10.35/LICENSE]
+
+  - name: mediapipe-hand-landmarker
+    version: '1'
+    url: https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+    license: Apache-2.0
+    license_files: [https://cdn.jsdelivr.net/gh/google-ai-edge/mediapipe@v0.10.35/LICENSE]
+
+  - name: mediapipe-pose-landmarker-lite
+    version: '1'
+    url: https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task
+    license: Apache-2.0
+    license_files: [https://cdn.jsdelivr.net/gh/google-ai-edge/mediapipe@v0.10.35/LICENSE]
+
+# Loaders that build a URL in code (no literal URL to swap). `from` is the exact text in the page, `to` is its
+# local replacement, `needs` = the deps (name@version) it can reach, all of which must be vendored for the swap,
+# and `page_has` = the exact text that lists those versions in the page (no match, no swap).
+rewrites:
+  - from: "https://cdnjs.cloudflare.com/ajax/libs/tone/${VERSIONS[i]}/Tone.js"
+    to: "{vendor}tone/${VERSIONS[i]}/Tone.js"
+    needs: [tone@15.1.22, tone@14.8.49]
+    page_has: "const VERSIONS = ['15.1.22', '14.8.49'];"
+

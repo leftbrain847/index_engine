@@ -1,0 +1,332 @@
+# DEMO DATA for tests and local dry runs. Every project, build and tile below is made up.
+# The real index.yml (your projects, sprint log and homepage tiles) lives in the private `index` repo;
+# the nightly refresh lays it over this file. The `config:` block mirrors the real one's settings.
+config:
+  owner: leftbrain847
+  themes:
+  - games
+  - data
+  - finance
+  - content
+  - audio
+  - tools
+  - platform
+  - learning
+  - personal
+  tags:
+  - 3d
+  - artifact
+  - catan
+  - edx
+  - football
+  - generative
+  - healthcare
+  - ml
+  - mobile
+  - model
+  - multiplayer
+  - music
+  - pipeline
+  - python
+  - rl
+  - trading
+  - visualization
+  needs_setup:
+    enabled: true
+    unsorted_theme: unsorted
+    fields:
+    - theme
+    - tags
+    - what
+    - next
+    - active
+    line_prefix: 'update my index:'
+    placeholder: …
+  project_file:
+    enabled: true
+    filename: project.yml
+    max_bytes: 4096
+  status_rules:
+    active: 7
+    paused: 30
+  skip_repos:
+  - index
+  output_repos:
+  - november_sprint
+  - leftbrain847.github.io
+  include_forks: true
+  fork_label: FORK
+  my_authors:
+  - leftbrain847
+  - noreply@anthropic.com
+  sprint_discovery:
+    enabled: true
+    public: true
+  vendor:
+    max_self_host_mb: 5
+    allow_data_hosts:
+    - de1.api.radio-browser.info
+    - nl1.api.radio-browser.info
+    - at1.api.radio-browser.info
+  showcase:
+    repo: leftbrain847.github.io
+    title: Agentic Builds
+    tagline: Things I make with AI agents, from daily experiments to tools I use every day.
+    indexable: false
+    featured:
+    - lantern_maze
+    layout:
+      tile_min_px: 150
+      thumb_ratio: 3/4
+      latest_count: 8
+      show_latest: true
+    clips:
+      lull:
+        seconds: 8
+        selector: .stage
+        steps:
+        - wait: 400
+        - start: true
+        - tap: .play
+        - wait: 7000
+      pinball:
+        seconds: 8
+        selector: '#c'
+        steps:
+        - tap: '#playBtn'
+        - wait: 300
+        - start: true
+        - hold: 900
+        - wait: 700
+        - tapAt:
+          - 80
+          - 520
+        - wait: 500
+        - tapAt:
+          - 310
+          - 520
+        - wait: 600
+        - tapAt:
+          - 80
+          - 520
+        - wait: 500
+        - tapAt:
+          - 310
+          - 520
+      4th_down:
+        seconds: 7
+        selector: section.card >> nth=1
+        steps:
+        - scroll: 330
+        - wait: 400
+        - start: true
+        - wait: 900
+        - type:
+          - '#togo'
+          - '9'
+        - wait: 1200
+        - type:
+          - '#yard'
+          - '20'
+        - wait: 1200
+        - type:
+          - '#togo'
+          - '1'
+        - wait: 1200
+      sound_jam_band:
+        seconds: 8
+        selector: section.panel >> nth=0
+        steps:
+        - start: true
+        - tap: '#play'
+        - wait: 2000
+        - tap: button:has-text('chorus')
+        - wait: 1500
+        - tap: '#genres button >> nth=3'
+        - wait: 1500
+      project_index:
+        seconds: 7
+        steps:
+        - start: true
+        - wait: 700
+        - tap: button:has-text('20 minutes')
+        - wait: 1200
+        - tap: button:has-text('Queue')
+        - wait: 1300
+        - tap: button:has-text('Health')
+        - wait: 1300
+      ludo:
+        seconds: 9
+        selector: canvas.board
+        steps:
+        - tap: button.go
+        - wait: 1000
+        - start: true
+        - tapAt:
+          - 123
+          - 543
+        - wait: 1500
+        - tapAt:
+          - 123
+          - 543
+        - wait: 1500
+        - tapAt:
+          - 123
+          - 543
+        - wait: 1500
+        - tapAt:
+          - 123
+          - 543
+        - wait: 1500
+        - tapAt:
+          - 123
+          - 543
+      asl_translator:
+        seconds: 8
+        selector: canvas.avatar
+        steps:
+        - start: true
+        - wait: 400
+        - type:
+          - input.text
+          - Hello, I love you, thank you for your help
+        - tap: button.round.go
+      mastery_field_guide:
+        seconds: 8
+        selector: '#fcard'
+        steps:
+        - tap: .cat[data-key="data"]
+        - wait: 500
+        - tap: '#modeStudy'
+        - scroll: 480
+        - wait: 500
+        - start: true
+        - wait: 1500
+        - tap: '#showBtn'
+        - wait: 2500
+        - tap: button:has-text('Good')
+        - wait: 1500
+      settlers:
+        seconds: 9
+        selector: '#board'
+        steps:
+        - select:
+          - '#look'
+          - flat
+        - tap: '#watch'
+        - tap: '#start'
+        - wait: 1800
+        - start: true
+      november_sprint:
+        seconds: 6
+        steps:
+        - start: true
+        - wait: 1000
+        - scroll: 250
+        - wait: 1500
+        - scroll: 250
+      portfolio:
+        seconds: 7
+        steps:
+        - start: true
+        - wait: 600
+        - tap: a:has-text('CICU Dashboard')
+        - wait: 2500
+        - scroll: 350
+    sprint_start: 2026-11-01
+    theme_sections:
+      audio: tools
+      content: tools
+      finance: data
+      series: tools
+      platform: tools
+      personal: data
+    sprint_sections: {}
+    sprint_titles: {}
+    sections:
+    - key: data
+      title: Data engineering & visualization
+    - key: learning
+      title: Learning
+    - key: games
+      title: Games
+    - key: tools
+      title: Tools
+  site:
+    repo: november_sprint
+    title: November Sprint
+    indexable: false
+    block_on_severity: high
+ideas:
+- title: 'Demo idea: share one lobby between two games'
+  theme: platform
+  tags:
+  - multiplayer
+  added: 2026-11-04
+projects:
+- repo: demo_game
+  active: true
+  theme: games
+  tags:
+  - football
+  - mobile
+  what: Demo entry used by tools/fixture_scan.py
+  next: null
+- repo: lantern_maze
+  active: true
+  theme: games
+  tags:
+  - generative
+  - mobile
+  what: 'Made-up demo project: a lantern-lit maze'
+  next: Add a second level
+- repo: tide_tables
+  active: false
+  theme: data
+  tags:
+  - visualization
+  - python
+  what: 'Made-up demo project: tide charts'
+  next: null
+- repo: quiet_ledger
+  active: true
+  theme: finance
+  tags:
+  - python
+  - visualization
+  what: 'Made-up demo project: a budget tracker'
+  next: Import bank CSVs
+sprint_log:
+- date: 2026-11-01
+  project: Lantern Maze
+  public: true
+  uat:
+    manual: passed
+    date: 2026-11-02
+  snapshot: https://example.com/demo/lantern_maze
+  repo: lantern_maze
+  file: index.html
+  latest_file: index.html
+- date: 2026-11-02
+  project: Tide Tables
+  public: false
+  snapshot: https://example.com/demo/tide_tables
+  repo: tide_tables
+  file: web/index.html
+showcase:
+- key: lantern_maze
+  title: Lantern Maze
+  tagline: Made-up demo tile.
+  section: games
+  tags:
+  - maze
+  repo: lantern_maze
+  file: index.html
+- key: quiet_ledger
+  title: Quiet Ledger
+  tagline: Made-up demo tile.
+  section: data
+  tags:
+  - budget
+  repo: quiet_ledger
+  file: web/index.html
