@@ -26,6 +26,7 @@ import project_file
 from sprint import entries as sprint_entries
 
 HERE = Path(__file__).parent
+ENGINE_URL = (yaml.safe_load((HERE / "split.yml").read_text()) or {}).get("engine_url", "").rstrip("/")   # split.yml
 SEV_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 AUTHORS: list[str] = []          # set from index.yml config.my_authors in main()
 
@@ -789,7 +790,7 @@ def render(repos, findings, decisions, rubric, index_cfg) -> None:
     here = TABS["guide"][1]
     L = page("guide", "Guide", "How the command center works. Everything here is configured in files you own; nothing is hard-coded.")
     L += ["### The loop", "",
-          "1. **Nightly** every repo is cloned read-only and graded against [rubric.yml](../rubric.yml).",
+          "1. **Nightly** every repo is cloned read-only and graded against [rubric.yml](" + ENGINE_URL + "/blob/main/rubric.yml) (in index_engine).",
           "2. Projects are **inactive by default**. Set `active: true` in [index.yml](../index.yml) to pull a project's tasks into the queue. "
           "Inactive projects only surface " + ", ".join(f"{CAT_LABEL[c].lower()} ≥ {v}" for c, v in surf.items()) + ".",
           "3. **Decide**: tell Claude `approve <code>`, `approve <check>` (a whole group) or `dismiss <code>` — or edit [tasks.yml](../tasks.yml).",
@@ -805,7 +806,7 @@ def render(repos, findings, decisions, rubric, index_cfg) -> None:
           "### Trends", "", "Each run writes one row per day to [metrics.csv](../metrics.csv): open findings by severity, queue, in review, overdue, "
           "resolved, average score. The Command Center shows the last 7 days.", "",
           "### Files", "", "| File | Who edits | What |", "|---|---|---|",
-          "| [rubric.yml](../rubric.yml) | you | checks, severities, SLAs, tabs, ranking |",
+          "| [rubric.yml](" + ENGINE_URL + "/blob/main/rubric.yml) | you (index_engine) | checks, severities, SLAs, tabs, ranking |",
           "| [index.yml](../index.yml) | you | projects, `active`, tags, sprint log |",
           "| [tasks.yml](../tasks.yml) | you + bot | one decision per finding |",
           "| [metrics.csv](../metrics.csv) | bot | daily history |",

@@ -50,7 +50,7 @@ checks:
     prompt: |
       In {repo}: {detail}. Found in: {paths}.
       First, in one line, say whether the vulnerable code can actually be reached in how this repo uses {package} (e.g. server-only or build-time code in a static page can't be). Then update {package} from {version} to {fix} (or the lowest version that clears every advisory listed) wherever it is pinned: lockfile, requirements, or CDN link. Keep the change minimal, run the tests, and open any changed web page in a browser to confirm it still works.
-      If the path is site_deps.yml (the public sites' dependency list in leftbrain847/index), change that entry's url, version, osv and license_files, run `python tools/vendor.py lock`, build the site and run `python tools/site_check.py` on it.
+      If the path is site_deps.yml (the public sites' dependency list in leftbrain847/index_engine), change that entry's url, version, osv and license_files, run `python tools/vendor.py lock`, build the site and run `python tools/site_check.py` on it.
       If there is no fixed version, propose a mitigation or a replacement and change nothing until I choose. Open a PR.
   vulnerable-frozen-snapshot:    # a day build that is frozen on purpose; never edited
     category: security
@@ -59,7 +59,7 @@ checks:
     why: The snapshot itself must never change, but its published copy can load a patched version or be held back.
     prompt: |
       The frozen day snapshot "{snapshot}" ({paths}) loads {package} {version}: {detail}.
-      Never edit the snapshot. Work in leftbrain847/index, on the published copy only:
+      Never edit the snapshot (it stays in leftbrain847/index). Fix the published copy in leftbrain847/index_engine (site_deps.yml):
       1. Say whether the advisory can be triggered in this static page (it can't if it needs server-side or Node-only code, a build tool, or input the page never takes). If it can't, say why and recommend I dismiss this; change nothing.
       2. If it can: add {package} {fix} to site_deps.yml (pinned url, osv, license_files) plus a `rewrites` entry that maps the page's old {package} URL to the new local copy, run `python tools/vendor.py lock`, build the sprint site, run `python tools/site_check.py` on it, and compare the page with the original in a browser.
       3. If the patched version breaks the page, revert that and instead set `public_day: false` on the sprint_log entry (the day build is held back from the public site) and say what broke.
