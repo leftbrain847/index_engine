@@ -81,3 +81,13 @@ def test_inputs_are_ignored_here_too_except_the_demo_copies():
                              capture_output=True, text=True).stdout.split()
     missing = [p for p in SPLIT["inputs"] if p not in ignored and p not in ("index.yml", "findings.json")]
     assert not missing, f"add to .gitignore: {missing}"
+
+
+def test_demo_data_is_still_made_up():
+    """If someone runs split.py copy-in here and commits, J's real index.yml/findings.json would go public. CI (a
+    required check) fails on that before it can merge."""
+    head = (ROOT / "index.yml").read_text().splitlines()[0]
+    assert head.startswith("# DEMO DATA"), "index.yml here must be the made-up demo copy"
+    import json
+    repos = {f.get("repo") for f in json.loads((ROOT / "findings.json").read_text())["findings"]}
+    assert repos <= set(FIXTURE_REPOS), f"findings.json names non-demo repos: {sorted(repos - set(FIXTURE_REPOS))}"

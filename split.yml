@@ -2,6 +2,7 @@
 # tests/test_split.py. The refresh works in a checkout of this repo, copies `inputs` in from the data repo (replacing
 # the made-up demo copies), runs the engine, then copies `outputs` back and commits them there.
 data_repo: index          # private repo under the same owner
+engine_url: https://github.com/leftbrain847/index_engine   # where the code lives; generated pages link here for rubric.yml etc.
 inputs:                   # copied from the data repo before the run (missing ones are skipped)
   - index.yml
   - findings.json
