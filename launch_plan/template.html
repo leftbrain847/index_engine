@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launch plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;800&display=swap">
+<style>
+/* VOICE: a calm working docket, newspaper-desk clarity
+   IDEA: a printed launch plan you tick down, phase by phase
+   PICTURE: the progress strip, one segment per one-time phase
+   COLOUR and TYPE: pale pink ground, ink, teal for done, claret for rules; Libre Franklin
+   LAYOUT: one column, rules up top, collapsible steps, sticky progress */
+:root{color-scheme:light dark;--bg:light-dark(#ffe3dc,#1c1512);--card:light-dark(#fff6f3,#2a201c);--ink:light-dark(#1a1817,#f3e9e4);--mute:light-dark(#5d5450,#b8aaa3);--teal:light-dark(#0d7680,#4fb3bb);--claret:light-dark(#990f3d,#ef7a9f);--line:light-dark(#e9c9c0,#3d302a)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Libre Franklin",system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:760px;margin:0 auto;padding:clamp(20px,4vw,48px) max(4vw,14px) 64px}
+h1{font-size:clamp(30px,6vw,44px);line-height:1.05;font-weight:800;margin:0 0 8px;text-wrap:balance}
+.lede{color:var(--mute);margin:0 0 20px;max-width:60ch}
+.top{position:sticky;top:0;z-index:2;background:var(--bg);padding:10px 0 12px;border-bottom:1px solid var(--line)}
+.count{display:flex;justify-content:space-between;font-weight:600;font-size:15px;margin-bottom:6px}
+.strip{display:flex;gap:4px;height:14px}
+.seg{flex:1;background:var(--line);border-radius:3px;overflow:hidden}
+.seg i{display:block;height:100%;background:var(--teal);width:0;transition:width .3s}
+@media(prefers-reduced-motion:reduce){.seg i{transition:none}}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--mute);margin-top:6px}
+section{margin-top:28px}
+h2{font-size:22px;line-height:1.15;margin:0 0 4px;font-weight:800}
+h3{font-size:17px;margin:18px 0 4px;font-weight:800}
+.sub{color:var(--mute);font-size:15px;margin:0 0 10px}
+details{background:var(--card);border:1px solid var(--line);border-radius:8px;margin:8px 0}
+summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;min-height:52px}
+summary::-webkit-details-marker{display:none}
+summary .t{flex:1;font-weight:600}
+summary .meta{font-size:13px;color:var(--mute);white-space:nowrap}
+summary .chev{width:10px;height:10px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);transition:transform .2s;flex:none}
+details[open] summary .chev{transform:rotate(225deg)}
+input[type=checkbox]{width:24px;height:24px;accent-color:var(--teal);flex:none;margin:0;cursor:pointer}
+details.done summary .t{text-decoration:line-through;color:var(--mute)}
+.body{padding:0 16px 14px 50px;font-size:15px}
+.body ul{margin:6px 0;padding-left:18px}
+.body li{margin:3px 0}
+.body a{color:var(--teal);font-weight:600}
+.rules details{border-color:var(--claret)}
+.rules summary .t{color:var(--claret)}
+.rules .body{padding-left:16px}
+.warn{border-left:3px solid var(--claret);padding:4px 0 4px 10px;margin:8px 0}
+.tag{font-size:12px;font-weight:600;color:var(--claret);border:1px solid var(--claret);border-radius:4px;padding:0 5px;margin-left:6px;white-space:nowrap}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:6px 0}
+td,th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+td.n{text-align:right;white-space:nowrap}
+button{font:600 14px "Libre Franklin",sans-serif;background:none;color:var(--teal);border:1px solid var(--teal);border-radius:6px;padding:8px 12px;min-height:40px;cursor:pointer}
+button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.hrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lbtn{font:600 13px "Libre Franklin",sans-serif;min-height:36px;padding:6px 12px;border-radius:99px}
+.all{margin:0 0 14px}
+details.playing{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal)}
+.lbar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-top:1px solid var(--line);padding:8px max(14px,env(safe-area-inset-left,0px)) calc(8px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px}
+.lnow{border:0;background:none;padding:0;min-height:0;text-align:left;font:400 13px "Libre Franklin",sans-serif;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:760px;margin:0 auto;width:100%}
+.lnow b{color:var(--ink)}
+.lctl{display:flex;align-items:center;justify-content:center;gap:10px;max-width:760px;margin:0 auto;width:100%}
+.lctl button{border-radius:99px;min-width:44px;height:44px;padding:0 12px;color:var(--ink);border-color:var(--line)}
+.lctl #lPlay{background:var(--teal);border-color:var(--teal);color:var(--bg);min-width:64px}
+.lctl #lRepeat[aria-pressed="true"]{border-color:var(--teal);color:var(--teal)}
+.lctl select{font:600 13px "Libre Franklin",sans-serif;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:99px;height:44px;padding:0 8px}
+.lnowlist{max-height:45vh;overflow:auto;max-width:760px;margin:0 auto;width:100%;border-top:1px solid var(--line);padding-top:4px}
+.lnowlist button{display:block;width:100%;text-align:left;border:0;padding:8px 4px;min-height:0;font:400 14px "Libre Franklin",sans-serif;color:var(--ink);border-radius:6px}
+.lnowlist button small{color:var(--mute);font-size:11px;margin-right:8px}
+.lnowlist button[aria-current="true"]{color:var(--teal);font-weight:600}
+.lstatus{margin:0 auto;max-width:760px;width:100%;font-size:12px;color:var(--claret)}
+body.has-lbar{padding-bottom:140px}
+.foot{margin-top:32px;font-size:13px;color:var(--mute)}
+@media(max-width:600px){.body{padding-left:16px}summary .meta{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1 id="title"></h1>
+<p class="lede" id="lede"></p>
+
+<p class="all"><button class="lbtn" data-listen="all" type="button">▶ Listen to the whole plan</button></p>
+<div class="top">
+  <div class="count"><span id="cnt"></span><span id="pct"></span></div>
+  <div class="strip" id="strip"></div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<section class="rules">
+  <div class="hrow"><h2>The rules</h2><button class="lbtn" data-listen="rules" type="button" aria-label="Listen to The rules">▶ Listen</button></div>
+  <p class="sub">These are decided. Every step below follows them.</p>
+  <div id="rules"></div>
+</section>
+
+<div id="phases"></div>
+
+<p class="foot">Not legal or tax advice. The benchmarks are third-party ranges and "est." marks my own math. Ticks live in this browser only.</p>
+</div>
+
+<div class="lbar" id="lBar" hidden>
+  <button type="button" class="lnow" id="lNow" aria-expanded="false" aria-controls="lNowList">Nothing playing</button>
+  <div class="lnowlist" id="lNowList" hidden></div>
+  <p class="lstatus" id="lStatus" role="status" hidden></p>
+  <div class="lctl">
+    <button type="button" id="lRepeat" aria-pressed="false" aria-label="Repeat each step">⟲<span id="lRepeatN"></span></button>
+    <button type="button" id="lPrev" aria-label="Previous">⏮</button>
+    <button type="button" id="lPlay" aria-label="Play">▶</button>
+    <button type="button" id="lNext" aria-label="Next">⏭</button>
+    <select id="lSpeed" aria-label="Speed"></select>
+  </div>
+</div>
+<script>
+{
+const PLAN=/*PLAN*/null;
+const REC=/*REC*/{};
+const {rules,phases,repeats,upkeep}=PLAN;
+document.getElementById("title").textContent=PLAN.meta.title;document.getElementById("lede").innerHTML=PLAN.meta.lede;
+
+const KEY="launch_setup_v1";
+let state={};
+try{state=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){state={}}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
+
+const stepHtml=s=>`<details id="d_${s.id}" class="${state[s.id]?'done':''}"><summary><input type="checkbox" data-id="${s.id}" ${state[s.id]?'checked':''} aria-label="Done: ${s.t}"><span class="t">${s.t}</span><span class="meta">${s.m}</span><span class="chev"></span></summary><div class="body">${s.b}</div></details>`;
+const groupHtml=g=>`${g.items.map(stepHtml).join("")}<button data-reset="${g.id}" type="button">Clear for the next round</button>`;
+
+const lbtn=(id,name)=>REC[id]?`<button class="lbtn" data-listen="${id}" type="button" aria-label="Listen to ${name}">▶ Listen</button>`:"";
+document.getElementById("rules").innerHTML=rules.map((r,i)=>`<details id="d_r${i}"><summary><span class="t">${r.t}</span><span class="chev"></span></summary><div class="body">${r.b}</div></details>`).join("");
+
+document.getElementById("phases").innerHTML=
+ phases.map((p,i)=>`<section><div class="hrow"><h2>${i+1}. ${p.name}</h2>${lbtn(p.id,`${i+1}. ${p.name}`)}</div><p class="sub">${p.sub}</p>${p.steps.map(stepHtml).join("")}</section>`).join("")+
+ repeats.map(g=>`<section><div class="hrow"><h2>${g.name} <span class="tag">${g.tag}</span></h2>${lbtn(g.id,g.name)}</div><p class="sub">${g.sub}</p>${groupHtml(g)}</section>`).join("")+
+ `<section><div class="hrow"><h2>Upkeep</h2>${lbtn("upkeep","Upkeep")}</div><p class="sub">The pipeline runs itself, but the business doesn't.</p>${upkeep.map(g=>`<h3>${g.name}</h3>${groupHtml(g)}`).join("")}</section>`;
+
+const strip=document.getElementById("strip"),legend=document.getElementById("legend");
+strip.innerHTML=phases.map(p=>`<div class="seg" title="${p.name}"><i id="bar_${p.id}"></i></div>`).join("");
+legend.innerHTML=phases.map((p,i)=>`<span>${i+1} ${p.name}</span>`).join("");
+
+const render=()=>{
+ const all=phases.flatMap(p=>p.steps);
+ const done=all.filter(s=>state[s.id]).length;
+ document.getElementById("cnt").textContent=`${done} of ${all.length} one-time steps`;
+ document.getElementById("pct").textContent=Math.round(done/all.length*100)+"%";
+ phases.forEach(p=>{const d=p.steps.filter(s=>state[s.id]).length;document.getElementById("bar_"+p.id).style.width=(d/p.steps.length*100)+"%"});
+};
+
+document.addEventListener("click",e=>{
+ const cb=e.target.closest('summary input');
+ if(!cb)return;
+ const d=cb.closest("details"),was=d.open;
+ setTimeout(()=>{d.open=was},0);
+});
+document.addEventListener("change",e=>{
+ const cb=e.target.closest('input[type=checkbox]');
+ if(cb){state[cb.dataset.id]=cb.checked;cb.closest("details").classList.toggle("done",cb.checked);save();render()}
+});
+const groups={};[...repeats,...upkeep].forEach(g=>groups[g.id]=g.items);
+document.querySelectorAll("[data-reset]").forEach(btn=>btn.addEventListener("click",()=>{
+ groups[btn.dataset.reset].forEach(s=>{delete state[s.id];const d=document.getElementById("d_"+s.id);d.classList.remove("done");d.querySelector("input").checked=false});
+ save();render();
+}));
+
+/* ---------- listen (from field_guide: recorded Kokoro af_heart, one MP3 per section, marks per step) ---------- */
+const LC={speeds:[0.8,1,1.25,1.5,1.75,2],repeats:[1,2,3],prevGraceMs:3000,flowSlackS:1.5};
+const SECS=[{id:"rules",title:"The rules",items:rules.map((r,i)=>({key:"r"+i,t:r.t}))},
+ ...phases.map((p,i)=>({id:p.id,title:`${i+1}. ${p.name}`,items:p.steps.map(s=>({key:s.id,t:s.t}))})),
+ ...repeats.map(g=>({id:g.id,title:g.name,items:g.items.map(s=>({key:s.id,t:s.t}))})),
+ {id:"upkeep",title:"Upkeep",items:upkeep.flatMap(g=>g.items.map(s=>({key:s.id,t:`${g.name}: ${s.t}`})))}];
+const LKEY="launch_listen_v1";
+let lp={speed:1,repeat:1};try{Object.assign(lp,JSON.parse(localStorage.getItem(LKEY)||"{}"))}catch(e){}
+const saveL=()=>{try{localStorage.setItem(LKEY,JSON.stringify(lp))}catch(e){}};
+const $=id=>document.getElementById(id);
+const player=new Audio();player.preload="auto";
+let lq=[],li=0,lplaying=false,lsel=null,lnowOpen=false,lstarted=0,cur=null;
+function spanFor(sid,key){const r=REC[sid];if(!r)return null;const m=r.marks.find(x=>x.key===key);return m?{file:r.file,start:m.start,end:m.end}:null}
+function build(sel){const out=[];for(const s of SECS){if(sel!=="all"&&s.id!==sel)continue;for(const it of s.items){const sp=spanFor(s.id,it.key);if(!sp)continue;for(let r=1;r<=lp.repeat;r++)out.push({sid:s.id,key:it.key,title:it.t,section:s.title,pass:r,...sp})}}return out}
+const sameFile=f=>player.src&&decodeURI(player.src).endsWith(f);
+function setStatus(t){const el=$("lStatus");el.hidden=!t;el.textContent=t||""}
+function play(){const it=lq[li];if(!it){stop();return}cur=it;if(!sameFile(it.file))player.src=it.file;player.defaultPlaybackRate=player.playbackRate=lp.speed;
+ const seek=()=>{player.currentTime=it.start};if(player.readyState>=1)seek();else player.addEventListener("loadedmetadata",seek,{once:true});
+ setStatus("");const pr=player.play();if(pr)pr.catch(e=>{if(lplaying){stop();setStatus("The recording didn't start ("+e.name+"). Tap play again.")}});paint()}
+function onEnd(){const n=li+1;if(n>=lq.length){li=0;stop();return}const nx=lq[n],t=player.currentTime;li=n;lstarted=Date.now();
+ if(nx.pass===1&&cur&&nx.file===cur.file&&nx.start>=cur.end-0.01&&nx.start-t<LC.flowSlackS){cur=nx;paint()}else play()}
+player.addEventListener("timeupdate",()=>{if(lplaying&&cur&&player.currentTime>=cur.end)onEnd()});
+player.addEventListener("ended",()=>{if(lplaying)onEnd()});
+player.addEventListener("error",()=>{if(lplaying){stop();setStatus("The recording couldn't load. Check your connection and tap play again.")}});
+function start(sel,at){lsel=sel;lq=build(sel);li=at||0;if(!lq.length){setStatus("No recording for this section yet.");showBar();return}lplaying=true;lstarted=Date.now();play()}
+function stop(){lplaying=false;if(!player.paused)player.pause();paint()}
+function goTo(i){li=Math.max(0,Math.min(i,lq.length-1));lstarted=Date.now();if(lplaying)play();else paint()}
+function showBar(){$("lBar").hidden=false;document.body.classList.add("has-lbar")}
+function paint(){showBar();const it=lq[li];const now=$("lNow");now.innerHTML="";
+ if(it){const b=document.createElement("b");b.textContent=it.title;now.append(b," · "+it.section+(lp.repeat>1?" · "+it.pass+"/"+lp.repeat:""))}else now.textContent="Nothing playing";
+ now.setAttribute("aria-expanded",String(lnowOpen));$("lPlay").textContent=lplaying?"❚❚":"▶";$("lPlay").setAttribute("aria-label",lplaying?"Pause":"Play");
+ $("lRepeat").setAttribute("aria-pressed",String(lp.repeat>1));$("lRepeatN").textContent=lp.repeat>1?"×"+lp.repeat:"";
+ document.querySelectorAll("details.playing").forEach(d=>d.classList.remove("playing"));
+ if(it&&lplaying){const d=document.getElementById("d_"+it.key);if(d)d.classList.add("playing")}
+ const list=$("lNowList");list.hidden=!lnowOpen;
+ if(lnowOpen){list.innerHTML="";const seen=new Set();lq.forEach((q,i)=>{if(seen.has(q.key))return;seen.add(q.key);const b=document.createElement("button");b.type="button";const sm=document.createElement("small");sm.textContent=q.section;b.append(sm,q.title);if(it&&q.key===it.key)b.setAttribute("aria-current","true");b.addEventListener("click",()=>{goTo(i);if(!lplaying){lplaying=true;play()}});list.appendChild(b)})}
+ if("mediaSession" in navigator&&it){try{navigator.mediaSession.metadata=new MediaMetadata({title:it.title,artist:it.section,album:"Launch plan"})}catch(e){}}}
+$("lSpeed").innerHTML=LC.speeds.map(v=>`<option value="${v}"${v===lp.speed?" selected":""}>${v}×</option>`).join("");
+$("lSpeed").addEventListener("change",e=>{lp.speed=+e.target.value;player.playbackRate=lp.speed;saveL()});
+$("lPlay").addEventListener("click",()=>{if(lplaying)stop();else if(lq.length){lplaying=true;lstarted=Date.now();play()}else start("all")});
+$("lNext").addEventListener("click",()=>{if(li+1<lq.length)goTo(li+1)});
+$("lPrev").addEventListener("click",()=>goTo(lplaying&&Date.now()-lstarted>LC.prevGraceMs?li:li-1));
+$("lRepeat").addEventListener("click",()=>{const i=LC.repeats.indexOf(lp.repeat);lp.repeat=LC.repeats[(i+1)%LC.repeats.length];saveL();const k=lq[li]&&lq[li].key;if(lsel){lq=build(lsel);const j=lq.findIndex(q=>q.key===k);li=j<0?0:j}paint()});
+$("lNow").addEventListener("click",()=>{lnowOpen=!lnowOpen;paint()});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-listen]");if(b)start(b.dataset.listen,0)});
+if("mediaSession" in navigator){const set=(a,h)=>{try{navigator.mediaSession.setActionHandler(a,h)}catch(e){}};set("play",()=>$("lPlay").click());set("pause",stop);set("nexttrack",()=>$("lNext").click());set("previoustrack",()=>$("lPrev").click())}
+render();
+}
+</script>
+</body>
+</html>
