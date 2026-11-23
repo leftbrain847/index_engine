@@ -13,7 +13,7 @@ folder in the private `index` repo (`launch_plan/`): `plan.json` and `audio/`. E
 | `sections.py` | The sections and their spoken text. One source for both scripts below. |
 | `audio.py` | Records `DATA/audio/<section>.mp3` and `marks.json`. A section is re-recorded only when its text changes. |
 | `build.py` | Writes `DATA/index.html` from the template plus the data. |
-| `smoke_listen.py` | A phone-width browser check of the built page. |
+| `smoke_listen.py`, `smoke_search.py` | Phone-width browser checks of the built page: Listen, then search. |
 
 ## Update the plan
 
