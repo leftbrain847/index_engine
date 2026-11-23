@@ -5,6 +5,10 @@ An app repo ships a sprint day by committing `snapshots/YYYY-MM-DD - Project.htm
 `sprint_log` entry, so a new day needs no index.yml edit. A hand-written entry with the same date and project
 wins, so you can still add links, pin a commit, or keep a day private with `public: false`.
 
+A day's living version (the current build, the log's `latest_file`) is found the same way: if the repo also has
+`live/<Project>.html` on its default branch, carrying the same opt-in tag, it becomes that project's `latest_file`. The
+sprint site then links it next to the frozen day build and the homepage tile opens it. A hand-written entry still wins.
+
 A discovered day goes on the public site only if the page opts in with `<meta name="sprint-public" content="yes">`
 and, like every day, passes UAT and the secret scan. Every reader of the log (uat.py, control.py,
 tools/build_site.py, tools/build_artifact.py, tools/sprint_files.py) goes through `entries()`. Turn discovery off,
@@ -19,6 +23,7 @@ from datetime import date
 from pathlib import Path
 
 SNAPSHOT = re.compile(r"^snapshots/(\d{4}-\d{2}-\d{2}) - ([^/]{1,80})\.html$")
+LIVE_DIR = "live/"   # live/<Project>.html: the project's living version, paired with its discovered day builds
 # The page's own opt-in to the public site (the app pipeline's `npm run snapshot` writes it). Without it a discovered day
 # is listed in the Sprint tab but never published, so a private repo's snapshots/ folder can't go public by accident.
 COMMENT = re.compile(r"<!--.*?-->", re.S)
@@ -46,13 +51,19 @@ def discover(scan: Path | None, cfg: dict) -> list[dict]:
         repo = bare.name[:-4]
         if repo in skip or repo in forks:
             continue
-        r = git(bare, "ls-tree", "-r", "-z", "--name-only", "HEAD", "--", "snapshots/")
-        for path in r.stdout.decode(errors="replace").split("\0") if r and r.returncode == 0 else []:
+        r = git(bare, "ls-tree", "-r", "-z", "--name-only", "HEAD", "--", "snapshots/", LIVE_DIR)
+        paths = r.stdout.decode(errors="replace").split("\0") if r and r.returncode == 0 else []
+        live = {p for p in paths if p.startswith(LIVE_DIR) and p.endswith(".html") and "/" not in p[len(LIVE_DIR):]}
+        for path in paths:
             m = SNAPSHOT.match(path)
             if not m or not m[2].strip() or not valid_date(m[1]):
                 continue   # misnamed, nameless or impossible dates (2026-02-30) are skipped, never crash the run
-            found.append({"date": m[1], "project": m[2].strip(), "repo": repo, "file": path,
-                          "public": opts.get("public", True) and opted_in(bare, path), "artifact": True, "discovered": True})
+            e = {"date": m[1], "project": m[2].strip(), "repo": repo, "file": path,
+                 "public": opts.get("public", True) and opted_in(bare, path), "artifact": True, "discovered": True}
+            current = f"{LIVE_DIR}{m[2].strip()}.html"
+            if current in live and opted_in(bare, current):   # the living version must opt in too
+                e["latest_file"] = current
+            found.append(e)
     return found
 
 

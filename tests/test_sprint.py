@@ -85,3 +85,28 @@ def test_opt_in_inside_a_comment_does_not_count(tmp_path):
     scan.mkdir()
     bare_repo(scan, "c", {"snapshots/2026-11-07 - Hidden.html": '<!-- <meta name="sprint-public" content="yes"> -->'})
     assert discover(scan, {})[0]["public"] is False
+
+
+def test_a_living_version_in_live_pairs_with_the_projects_day_builds(tmp_path):
+    scan = tmp_path / "scan"
+    scan.mkdir()
+    tag = '<meta name="sprint-public" content="yes">'
+    bare_repo(scan, "kart", {"snapshots/2026-11-21 - Kart.html": f"<title>day</title>{tag}", "live/Kart.html": f"<title>Kart</title>{tag}"})
+    bare_repo(scan, "pong", {"snapshots/2026-11-02 - Pong.html": f"<title>day</title>{tag}"})                      # no living version
+    bare_repo(scan, "shy", {"snapshots/2026-11-03 - Shy.html": f"<title>day</title>{tag}", "live/Shy.html": "<title>no opt-in</title>"})
+    bare_repo(scan, "other", {"snapshots/2026-11-04 - Other.html": f"<title>day</title>{tag}", "live/Different.html": tag, "live/x/Other.html": tag})
+    by = {e["project"]: e for e in discover(scan, {})}
+    assert by["Kart"]["latest_file"] == "live/Kart.html"
+    assert "latest_file" not in by["Pong"]
+    assert "latest_file" not in by["Shy"]      # a living version that doesn't opt in is never linked
+    assert "latest_file" not in by["Other"]    # only live/<same project name>.html, never another name or a subfolder
+    assert len(by) == 4                        # live/ files are never days themselves
+
+
+def test_a_hand_written_entry_still_wins_over_a_discovered_living_version(tmp_path):
+    scan = tmp_path / "scan"
+    scan.mkdir()
+    tag = '<meta name="sprint-public" content="yes">'
+    bare_repo(scan, "kart", {"snapshots/2026-11-21 - Kart.html": tag, "live/Kart.html": tag})
+    mine = {"date": "2026-11-21", "project": "Kart", "repo": "kart", "latest_url": "https://example.com/kart"}
+    assert [e for e in entries({"config": {}, "sprint_log": [mine]}, scan) if e["project"] == "Kart"] == [mine]
