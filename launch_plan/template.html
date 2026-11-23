@@ -77,6 +77,9 @@ body.has-lbar{padding-bottom:140px}
 .search input:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
 #qcount{font-size:13px;color:var(--mute);white-space:nowrap}
 .noresults{color:var(--mute);margin-top:28px}
+.vswitch{display:inline-flex;border:1px solid var(--line);border-radius:99px;overflow:hidden;margin:4px 0}
+.vswitch button{border:0;border-radius:0;min-height:36px;padding:6px 12px;font:600 13px "Libre Franklin",sans-serif;color:var(--mute);background:none}
+.vswitch button[aria-pressed="true"]{background:var(--teal);color:var(--bg)}
 .foot{margin-top:32px;font-size:13px;color:var(--mute)}
 @media(max-width:600px){.body{padding-left:16px}summary .meta{display:none}}
 </style>
@@ -243,6 +246,20 @@ function runSearch(){
 }
 q.addEventListener("input",runSearch);
 q.addEventListener("keydown",e=>{if(e.key==="Escape"){q.value="";runSearch();q.blur()}});
+
+/* ---------- view switch: <div class="views" data-labels="A|B"><div>…</div><div data-quiet>…</div></div> ---------- */
+// Shows one child at a time with a pill toggle; the choice is remembered per switch. data-quiet keeps the
+// alternate view out of the recorded audio (sections.text_of).
+const VKEY="launch_views_v1";
+let vstate={};try{vstate=JSON.parse(localStorage.getItem(VKEY)||"{}")}catch(e){}
+document.querySelectorAll(".views").forEach((box,bi)=>{
+ const kids=[...box.children],labels=(box.dataset.labels||"").split("|"),id=box.dataset.id||"v"+bi;
+ if(kids.length<2)return;
+ const bar=document.createElement("div");bar.className="vswitch";bar.setAttribute("role","group");
+ const show=i=>{kids.forEach((k,j)=>k.hidden=j!==i);[...bar.children].forEach((b,j)=>b.setAttribute("aria-pressed",String(j===i)));vstate[id]=i;try{localStorage.setItem(VKEY,JSON.stringify(vstate))}catch(e){}};
+ kids.forEach((k,i)=>{const b=document.createElement("button");b.type="button";b.textContent=labels[i]||"View "+(i+1);b.addEventListener("click",ev=>{ev.stopPropagation();show(i)});bar.appendChild(b)});
+ box.prepend(bar);show(Math.min(vstate[id]??0,kids.length-1));
+});
 render();
 }
 </script>

@@ -39,7 +39,12 @@ SAY = [
 
 
 def text_of(fragment):
-    """Spoken text from an item's HTML: blocks and list items end as sentences, cells as commas, tags go."""
+    """Spoken text from an item's HTML: blocks and list items end as sentences, cells as commas, tags go.
+
+    Alternate views (`<div data-quiet>…</div>`, e.g. the second table of a view switch) are skipped, so the
+    audio reads each fact once.
+    """
+    fragment = re.sub(r"<div data-quiet[^>]*>.*?</div>", " ", fragment, flags=re.S)
     s = re.sub(r"</(li|p|div|tr|h\d)>", ". ", fragment, flags=re.I)
     s = re.sub(r"</t[dh]>", ", ", s, flags=re.I)
     s = re.sub(r"<br\s*/?>", ". ", s, flags=re.I)

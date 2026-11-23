@@ -37,3 +37,9 @@ def test_build_injects_data_and_keeps_script_tags_closed(tmp_path):
     assert "/*PLAN*/" not in page and "/*REC*/" not in page
     assert page.count("</script>") == 1, "data must not close the page's script tag"
     assert '"title": "T"' in page
+
+
+def test_alternate_views_are_not_spoken():
+    html = '<p>Before.</p><div class="views" data-labels="A|B"><div><table><tr><td>one</td></tr></table></div><div data-quiet><table><tr><td>two</td></tr></table></div></div>'
+    said = sections.text_of(html)
+    assert "one" in said and "two" not in said
