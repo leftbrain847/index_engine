@@ -100,3 +100,24 @@ def test_phone_smoke(built):
         assert min(heights) >= 44, "tap targets under 44px"
         assert errors == []
         browser.close()
+
+
+def test_pinned_keeps_only_https_links():
+    index = {"config": {"pinned": [
+        {"title": "Plan", "url": "https://claude.ai/artifact/demo", "note": "the launch plan"},
+        {"title": "Script", "url": "javascript:alert(1)"},
+        {"title": "Plain", "url": "http://example.com"},
+        {"title": "Quote", "url": 'https://example.com/"onmouseover=x'},
+        "not a dict",
+        {"url": "https://example.com/" + "a" * 600, "title": "T" * 200},
+    ]}}
+    got = ba.pinned(index)
+    assert [p["title"] for p in got] == ["Plan", "T" * 80]
+    assert got[0] == {"title": "Plan", "url": "https://claude.ai/artifact/demo", "note": "the launch plan"}
+    assert len(got[1]["url"]) == 500
+    assert ba.pinned({}) == [] and ba.pinned({"config": {"pinned": None}}) == []
+
+
+def test_pinned_is_in_the_page_data(built):
+    _, data = built
+    assert isinstance(data["pinned"], list)

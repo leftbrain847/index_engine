@@ -31,6 +31,24 @@ def load_yaml(name: str) -> dict:
     return (yaml.safe_load(p.read_text()) or {}) if p.exists() else {}
 
 
+def pinned(index: dict) -> list[dict]:
+    """Links pinned at the top of the Now tab (index.yml config.pinned: [{title, url, note}]).
+
+    https only: anything else (javascript:, http:, relative) is dropped, so a bad entry can't become a script link.
+    Capped and trimmed so a long entry can't swamp the page.
+    """
+    out = []
+    for p in (index.get("config", {}) or {}).get("pinned") or []:
+        if not isinstance(p, dict):
+            continue
+        url = str(p.get("url") or "").strip()
+        if not url.lower().startswith("https://") or any(c in url for c in "\"<> \n"):
+            continue
+        out.append({"title": str(p.get("title") or url).strip()[:80], "url": url[:500],
+                    "note": str(p.get("note") or "").strip()[:200]})
+    return out[:10]
+
+
 def build_data(scan: str | None = None) -> dict:
     findings = json.loads((ROOT / "findings.json").read_text())
     rubric = load_yaml("rubric.yml")
@@ -78,6 +96,7 @@ def build_data(scan: str | None = None) -> dict:
         "needs_setup": [{**it, "last": (stats.get(it["repo"]) or {}).get("last"),
                          "started": str((stats.get(it["repo"]) or {}).get("started") or "")}
                         for it in needs_setup(index, findings["repos"])],
+        "pinned": pinned(index),   # index.yml config.pinned: links at the top of Now
         "setup_hints": {"themes": index.get("config", {}).get("themes") or [], "tags": index.get("config", {}).get("tags") or []},
     }
 
