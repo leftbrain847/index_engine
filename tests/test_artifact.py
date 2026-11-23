@@ -109,13 +109,16 @@ def test_pinned_keeps_only_https_links():
         {"title": "Plain", "url": "http://example.com"},
         {"title": "Quote", "url": 'https://example.com/"onmouseover=x'},
         "not a dict",
-        {"url": "https://example.com/" + "a" * 600, "title": "T" * 200},
+        {"title": "Tab", "url": "https://example.com/\tx"},
+        {"title": "Long", "url": "https://example.com/" + "a" * 600},
+        {"url": "https://example.com/ok", "title": "T" * 200},
     ]}}
     got = ba.pinned(index)
     assert [p["title"] for p in got] == ["Plan", "T" * 80]
     assert got[0] == {"title": "Plan", "url": "https://claude.ai/artifact/demo", "note": "the launch plan"}
-    assert len(got[1]["url"]) == 500
-    assert ba.pinned({}) == [] and ba.pinned({"config": {"pinned": None}}) == []
+    for bad in (None, 5, True, "x", {"a": 1}):
+        assert ba.pinned({"config": {"pinned": bad}}) == []
+    assert ba.pinned({}) == []
 
 
 def test_pinned_is_in_the_page_data(built):
