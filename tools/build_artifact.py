@@ -31,6 +31,29 @@ def load_yaml(name: str) -> dict:
     return (yaml.safe_load(p.read_text()) or {}) if p.exists() else {}
 
 
+def pinned(index: dict) -> list[dict]:
+    """Links pinned at the top of the Now tab (index.yml config.pinned: [{title, url, note}]).
+
+    https only: anything else (javascript:, http:, relative) is dropped, so a bad entry can't become a script link.
+    URLs over 500 characters are dropped (a cut URL would be a broken link); titles and notes are trimmed;
+    at most 10 entries. A non-list `pinned` is ignored rather than breaking the build.
+    """
+    raw = (index.get("config", {}) or {}).get("pinned")
+    if not isinstance(raw, list):
+        return []
+    out = []
+    for p in raw:
+        if not isinstance(p, dict):
+            continue
+        url = str(p.get("url") or "").strip()
+        if (not url.lower().startswith("https://") or len(url) > 500
+                or any(c.isspace() or c in "\"<>" for c in url)):
+            continue
+        out.append({"title": str(p.get("title") or url).strip()[:80], "url": url,
+                    "note": str(p.get("note") or "").strip()[:200]})
+    return out[:10]
+
+
 def build_data(scan: str | None = None) -> dict:
     findings = json.loads((ROOT / "findings.json").read_text())
     rubric = load_yaml("rubric.yml")
@@ -78,6 +101,7 @@ def build_data(scan: str | None = None) -> dict:
         "needs_setup": [{**it, "last": (stats.get(it["repo"]) or {}).get("last"),
                          "started": str((stats.get(it["repo"]) or {}).get("started") or "")}
                         for it in needs_setup(index, findings["repos"])],
+        "pinned": pinned(index),   # index.yml config.pinned: links at the top of Now
         "setup_hints": {"themes": index.get("config", {}).get("themes") or [], "tags": index.get("config", {}).get("tags") or []},
     }
 
