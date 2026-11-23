@@ -110,3 +110,13 @@ def test_a_hand_written_entry_still_wins_over_a_discovered_living_version(tmp_pa
     bare_repo(scan, "kart", {"snapshots/2026-11-21 - Kart.html": tag, "live/Kart.html": tag})
     mine = {"date": "2026-11-21", "project": "Kart", "repo": "kart", "latest_url": "https://example.com/kart"}
     assert [e for e in entries({"config": {}, "sprint_log": [mine]}, scan) if e["project"] == "Kart"] == [mine]
+
+
+def test_the_living_version_goes_on_the_newest_day_only(tmp_path):
+    scan = tmp_path / "scan"
+    scan.mkdir()
+    tag = '<meta name="sprint-public" content="yes">'
+    bare_repo(scan, "kart", {"snapshots/2026-11-21 - Kart.html": tag, "snapshots/2026-11-25 - Kart.html": tag, "live/Kart.html": tag})
+    days = {e["date"]: e for e in discover(scan, {})}
+    assert days["2026-11-25"]["latest_file"] == "live/Kart.html"
+    assert "latest_file" not in days["2026-11-21"]

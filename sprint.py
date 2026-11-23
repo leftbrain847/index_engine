@@ -60,10 +60,16 @@ def discover(scan: Path | None, cfg: dict) -> list[dict]:
                 continue   # misnamed, nameless or impossible dates (2026-02-30) are skipped, never crash the run
             e = {"date": m[1], "project": m[2].strip(), "repo": repo, "file": path,
                  "public": opts.get("public", True) and opted_in(bare, path), "artifact": True, "discovered": True}
-            current = f"{LIVE_DIR}{m[2].strip()}.html"
+            found.append(e)
+        # The living version goes on the project's newest day only (one page to UAT and publish, not one per day).
+        newest: dict[str, dict] = {}
+        for e in found:
+            if e["repo"] == repo and (e["project"] not in newest or e["date"] > newest[e["project"]]["date"]):
+                newest[e["project"]] = e
+        for project, e in newest.items():
+            current = f"{LIVE_DIR}{project}.html"
             if current in live and opted_in(bare, current):   # the living version must opt in too
                 e["latest_file"] = current
-            found.append(e)
     return found
 
 
