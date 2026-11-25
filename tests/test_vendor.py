@@ -193,3 +193,26 @@ def test_repo_dependency_list_is_valid_and_fully_locked():
     names = {f"{d['name']}@{d.get('version', '')}" for d in spec["deps"]}
     for rw in spec.get("rewrites") or []:
         assert set(rw["needs"]) <= names
+
+
+UNLISTED = "https://fonts.googleapis.com/css2?family=Other+Sans:wght@600;700&display=swap"
+
+
+def test_unlisted_google_fonts_are_dropped_so_pages_fall_back_to_system_fonts():
+    page = (f'<head><link rel="preconnect" href="https://fonts.googleapis.com">'
+            f'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            f'<link rel="stylesheet" href="{UNLISTED.replace("&", "&amp;")}">'
+            f'<style>@import url("{UNLISTED}");\nbody{{font-family:"Other Sans",system-ui,sans-serif}}</style></head>')
+    v = make()
+    out = v.rewrite(page)
+    assert "fonts.googleapis.com" not in out and "fonts.gstatic.com" not in out   # links, import and hints gone
+    assert 'font-family:"Other Sans",system-ui,sans-serif' in out                  # the page's own fallback stays
+    assert v.dropped_fonts == {UNLISTED}
+    assert not v.used                                                             # nothing fetched or vendored
+
+
+def test_listed_google_fonts_still_take_the_self_host_path():
+    v = make()
+    out = v.rewrite(f'<link rel="stylesheet" href="{FONT}"><link rel="stylesheet" href="{UNLISTED}">')
+    assert 'href="vendor/fonts/fonts-test.css"' in out and UNLISTED not in out
+    assert v.dropped_fonts == {UNLISTED}
