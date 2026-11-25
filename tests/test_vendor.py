@@ -216,3 +216,16 @@ def test_listed_google_fonts_still_take_the_self_host_path():
     out = v.rewrite(f'<link rel="stylesheet" href="{FONT}"><link rel="stylesheet" href="{UNLISTED}">')
     assert 'href="vendor/fonts/fonts-test.css"' in out and UNLISTED not in out
     assert v.dropped_fonts == {UNLISTED}
+
+
+@pytest.mark.parametrize("page, kept", [
+    ("<style>@import url(https://fonts.googleapis.com/css2?family=A:wght@400;700&display=swap);b{x:1}</style>",
+     "<style>b{x:1}</style>"),                                              # unquoted url() with ";" inside
+    ('<style>@import url("https://fonts.googleapis.com/css2?family=A")</style><script>var a=1;</script>',
+     "<style></style><script>var a=1;</script>"),                           # no semicolon: stops at </style>
+    ("<style>@import 'https://fonts.googleapis.com/css2?family=A';</style>", "<style></style>"),
+    ('<link rel="icon" data-href="https://fonts.googleapis.com/x" href="i.png">',
+     '<link rel="icon" data-href="https://fonts.googleapis.com/x" href="i.png">'),   # data-href is not href
+])
+def test_font_drop_never_cuts_past_the_import_or_link(page, kept):
+    assert make().rewrite(page) == kept

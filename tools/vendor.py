@@ -294,9 +294,13 @@ class Vendor:
         return written
 
 
-GFONT_LINK = re.compile(r'<link\b[^>]*\bhref=["\']?(https://fonts\.googleapis\.com/[^"\'\s>]*)[^>]*>\s*', re.I)
-GFONT_IMPORT = re.compile(r'@import\s+(?:url\(\s*)?(?:"(https://fonts\.googleapis\.com/[^"]*)"|\'(https://fonts\.googleapis\.com/[^\']*)\'|'
-                          r'(https://fonts\.googleapis\.com/[^)\s;]*))\s*\)?[^;]*;\s*', re.I)
+GFONT_LINK = re.compile(r'<link\b[^>]*(?<![\w-])href=["\']?(https://fonts\.googleapis\.com/[^"\'\s>]*)[^>]*>\s*', re.I)
+# @import "…" | @import url("…") | @import url(…): an unquoted url() runs to its ")" (Google URLs contain ";"),
+# and the tail stops at ";" or before "<", so a missing semicolon can never eat past </style>.
+GFONT_IMPORT = re.compile(r'@import\s+(?:url\(\s*)?(?:"(https://fonts\.googleapis\.com/[^"]*)"\s*\)?|'
+                          r"'(https://fonts\.googleapis\.com/[^']*)'\s*\)?|"
+                          r'(?<=url\()\s*(https://fonts\.googleapis\.com/[^)\s]*)\s*\))[^;<{}]*;?\s*', re.I)
+# Also matches inside JS strings or <pre> samples; acceptable on published copies (snapshots are untouched).
 
 
 def drop_unlisted_fonts(page: str, listed: set[str]) -> tuple[str, set[str]]:
