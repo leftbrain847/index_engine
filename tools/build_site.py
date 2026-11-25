@@ -191,6 +191,8 @@ def main(argv: list[str]) -> int:
         print(f"held back  {name}: {why}")
         print(f"::notice::site: held back {name} ({why})")
     print(f"vendored   {len(vendor.used)} pinned files into vendor/")
+    if vendor.dropped_fonts:
+        print(f"dropped    {len(vendor.dropped_fonts)} external font stylesheet(s); pages use their system-font fallbacks")
     for p in vendor.problems:
         print(f"::warning::site: {p}")
     return 0

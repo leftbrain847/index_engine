@@ -137,6 +137,8 @@ class Vendor:
     fetch: callable = http_get
     used: set = field(default_factory=set)            # urls of deps some page now loads locally
     hashed: set = field(default_factory=set)          # urls of large deps left on the CDN with an integrity hash
+    dropped_fonts: set = field(default_factory=set)   # unlisted Google Fonts urls removed from published copies
+    off: bool = False                                 # config failed to load: pages are left exactly as they are
     problems: list = field(default_factory=list)
     _bytes: dict = field(default_factory=dict)        # url -> verified bytes (one download per run)
 
@@ -152,10 +154,11 @@ class Vendor:
             v = cls(spec.get("deps") or [], lock, spec.get("rewrites") or [],
                     int(float(cfg.get("max_self_host_mb", 5)) * 1024 * 1024), fetch)
         except Exception as ex:
-            return cls([], {}, problems=[f"vendoring off: {ex!r}"[:200]])
+            return cls([], {}, problems=[f"vendoring off: {ex!r}"[:200]], off=True)
         if errs := validate(v.deps):
             v.problems += [f"site_deps.yml: {e}" for e in errs]
             v.deps = []
+            v.off = True
         for d in v.deps:
             if d["url"] in v.lock and (bad := lock_problems(d, v.lock[d["url"]])):
                 v.problems.append(f"{key(d)}: lock not used: {'; '.join(bad)}")
@@ -238,9 +241,15 @@ class Vendor:
             if (d["url"] in page or html_escape(d["url"]) in page) and d["url"] in self.on_cdn() and self._ready(d):
                 page = add_integrity(page, d["url"], self.lock[d["url"]]["sha384"])
                 self.hashed.add(d["url"])
-        # resource hints for font hosts, once this page's fonts are self-hosted and nothing else uses those hosts
-        fonts_local = any(d.get("kind") == "google-fonts" and d["url"] in self.used and
-                          base + self.local_path(d) in page for d in self.deps)
+        # Google Fonts that site_deps.yml doesn't list are dropped from the published copy, never fetched: the
+        # page's own CSS fallback stack (system fonts) takes over. Listed ones keep the self-host path above.
+        dropped: set[str] = set()
+        if not self.off:
+            page, dropped = drop_unlisted_fonts(page, {d["url"] for d in self.deps if d.get("kind") == "google-fonts"})
+        self.dropped_fonts.update(dropped)
+        # resource hints for font hosts, once this page's fonts are self-hosted or dropped and nothing else uses them
+        fonts_local = bool(dropped) or any(d.get("kind") == "google-fonts" and d["url"] in self.used and
+                                           base + self.local_path(d) in page for d in self.deps)
         for host in FONT_HOSTS:
             if fonts_local and f"//{host}/" not in page:
                 page = re.sub(rf'<link\b[^>]*rel=["\']?(?:preconnect|dns-prefetch)["\']?[^>]*//{re.escape(host)}/?["\'][^>]*>\s*',
@@ -283,6 +292,30 @@ class Vendor:
             notices += [f"### {url}", "", "```", data.decode(errors="replace").strip(), "```", ""]
         put("THIRD_PARTY_NOTICES.md", "\n".join(notices).encode())
         return written
+
+
+GFONT_LINK = re.compile(r'<link\b[^>]*(?<![\w-])href=["\']?(https://fonts\.googleapis\.com/[^"\'\s>]*)[^>]*>\s*', re.I)
+# @import "…" | @import url("…") | @import url(…): an unquoted url() runs to its ")" (Google URLs contain ";"),
+# and the tail stops at ";" or before "<", so a missing semicolon can never eat past </style>.
+GFONT_IMPORT = re.compile(r'@import\s+(?:url\(\s*)?(?:"(https://fonts\.googleapis\.com/[^"]*)"\s*\)?|'
+                          r"'(https://fonts\.googleapis\.com/[^']*)'\s*\)?|"
+                          r'(?<=url\()\s*(https://fonts\.googleapis\.com/[^)\s]*)\s*\))[^;<{}]*;?\s*', re.I)
+# Also matches inside JS strings or <pre> samples; acceptable on published copies (snapshots are untouched).
+
+
+def drop_unlisted_fonts(page: str, listed: set[str]) -> tuple[str, set[str]]:
+    """Pure: remove Google Fonts stylesheet <link>s and @imports whose URL isn't in `listed`.
+    Returns (page, dropped urls). Preconnect hints to the bare host are left for rewrite() to clear."""
+    dropped: set[str] = set()
+    def cut(m):
+        url = next(g for g in m.groups() if g).replace("&amp;", "&")
+        if url.rstrip("/") in ("https://fonts.googleapis.com", "") or url in listed:
+            return m.group(0)
+        dropped.add(url)
+        return ""
+    page = GFONT_LINK.sub(cut, page)
+    page = GFONT_IMPORT.sub(cut, page)
+    return page, dropped
 
 
 def html_escape(url: str) -> str:
