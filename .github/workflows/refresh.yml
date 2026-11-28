@@ -120,9 +120,11 @@ jobs:
           echo "::error::could not push the refresh after 3 tries; nothing was overwritten, rerun the workflow"
           exit 1
       - name: Publish the public sites (sprint + homepage)
-        # Only checked pages (tools/build_site.py, tools/build_showcase.py). A site whose pages load a third-party
-        # file that is neither self-hosted nor pinned by hash, or that breaks in a browser, is not pushed (the live
-        # site keeps its last good version) and the step fails. Check details go to the private run log.
+        # Only checked pages (tools/build_site.py, tools/build_showcase.py). On the sprint site a page that loads a
+        # third-party file neither self-hosted nor pinned by hash, or breaks in a browser, is held back on its own
+        # (tools/site_check.py --drop-bad) and every link to it is removed there and on the homepage
+        # (tools/unlink.py); the rest publishes and the step fails at the end so it gets noticed. A site-wide
+        # problem, or any failure on the homepage, still blocks that site. Check details go to the private run log.
         env:
           SITE_TOKEN: ${{ secrets.SITE_TOKEN }}
         run: |
@@ -130,9 +132,16 @@ jobs:
           site_token="${SITE_TOKEN:-}"; unset SITE_TOKEN   # a shell variable from here on: the checks below never see it
           sites=$(python -c "import yaml;c=yaml.safe_load(open('index.yml'))['config'];[print(r, d) for r, d in ((c['site'].get('repo'), 'site'), ((c.get('showcase') or {}).get('repo'), 'showcase')) if r]")
           failed=""
+          dropped="$RUNNER_TEMP/held_back.txt"; : > "$dropped"
           while read -r site_repo dir; do
             [ -n "$site_repo" ] && [ -d "$RUNNER_TEMP/$dir" ] || continue
-            if ! tools/quiet.sh "$RUNNER_TEMP/site_check.log" "check $site_repo" python tools/site_check.py "$RUNNER_TEMP/$dir"; then
+            extra=()
+            if [ "$dir" = site ]; then
+              extra=(--drop-bad "$dropped"); sprint_prefix="https://$OWNER.github.io/$site_repo/"
+            elif [ -s "$dropped" ] && [ -n "${sprint_prefix:-}" ]; then
+              tools/quiet.sh "$RUNNER_TEMP/site_check.log" "unlink held-back pages on $site_repo" python tools/unlink.py "$RUNNER_TEMP/$dir" "$dropped" "$sprint_prefix" || { failed="$failed $site_repo"; continue; }
+            fi
+            if ! tools/quiet.sh "$RUNNER_TEMP/site_check.log" "check $site_repo" python tools/site_check.py "$RUNNER_TEMP/$dir" "${extra[@]}"; then
               failed="$failed $site_repo"; continue
             fi
             if [ -z "$site_token" ]; then echo "::notice::SITE_TOKEN not set; $site_repo checked but not published"; continue; fi
@@ -158,10 +167,13 @@ jobs:
               echo "published $(find . -name '*.html' -not -path './.git/*' | wc -l) pages to $site_repo"
             ); then failed="$failed $site_repo"; fi
           done <<< "$sites"
+          if [ -s "$dropped" ]; then
+            echo "::error::held back $(wc -l < "$dropped") sprint page(s) that failed the check; the rest published (details in the run log)"
+          fi
           if [ -n "$failed" ]; then
             echo "::error::not published:$failed (the live sites keep their last good version; details in the run log)"
-            exit 1
           fi
+          if [ -s "$dropped" ] || [ -n "$failed" ]; then exit 1; fi
       - name: Keep the run log when something failed
         # The public log only says which step failed; the details are in this commit to the private repo.
         if: failure()
