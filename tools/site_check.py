@@ -1,6 +1,12 @@
 """Publish gate for a built public site: run on the folder about to be pushed, exit 1 if it must not go up.
 
-    python tools/site_check.py SITE_DIR
+    python tools/site_check.py SITE_DIR [--no-browser] [--drop-bad LIST_FILE]
+
+--no-browser  markup checks only (fast; what project repos run on their snapshots in CI).
+--drop-bad    contain failures: delete each failing page, write their paths to LIST_FILE, remove links to them
+              from the rest of the site (tools/unlink.py), and pass if nothing site-wide failed. One bad page
+              then costs one page, not the whole site. If the front page fails, or more than MAX_DROP pages do,
+              nothing is dropped and the site stays blocked as before (that looks systemic, not one bad page).
 
 Every published page (not vendor/) must:
 1. load no third-party script, stylesheet or font that is neither self-hosted (vendor/) nor pinned by hash:
@@ -109,13 +115,45 @@ def check(site: Path, v: Vendor, browser: bool = True, data_hosts: set[str] | No
     return {k: sorted(set(b)) for k, b in problems.items() if b}
 
 
+MAX_DROP = 3                     # more failing pages than this looks systemic (bad dep, flaky browser): block instead
+KEEP = {"index.html"}            # never published without its front page
+
+
+def drop_bad(site: Path, problems: dict[str, list[str]], max_drop: int = MAX_DROP) -> list[str]:
+    """Delete every page with its own problems; the site-wide "site_deps" group can't be fixed by dropping.
+    Drops nothing (so the whole site stays blocked) if the front page fails or too many pages do."""
+    dropped = sorted(rel for rel in problems if rel != "site_deps" and (site / rel).is_file())
+    if len(dropped) > max_drop or KEEP & set(dropped):
+        return []
+    for rel in dropped:
+        (site / rel).unlink()
+    return dropped
+
+
 def main(argv: list[str]) -> int:
-    site = Path(argv[0])
+    import argparse
+    ap = argparse.ArgumentParser(prog="site_check.py")
+    ap.add_argument("site", type=Path)
+    ap.add_argument("--no-browser", action="store_true", help="markup checks only")
+    ap.add_argument("--drop-bad", type=Path, metavar="LIST_FILE", help="hold back failing pages, list them here")
+    a = ap.parse_args(argv)
+    site, browser, drop_to = a.site, not a.no_browser, a.drop_bad
     cfg = ((yaml.safe_load((HERE / "index.yml").read_text()) or {}).get("config") or {}).get("vendor") or {}
-    problems = check(site, Vendor.load(), data_hosts=set(cfg.get("allow_data_hosts") or []))
+    problems = check(site, Vendor.load(), browser=browser, data_hosts=set(cfg.get("allow_data_hosts") or []))
+    if drop_to is not None:
+        from unlink import unlink
+        dropped = drop_bad(site, problems)
+        drop_to.write_text("".join(f"{r}\n" for r in dropped))
+        unlink(site, dropped)
+        for rel in dropped:
+            for b in problems.pop(rel):
+                print(f"::warning::{site.name}/{rel} held back: {b}")
+        if dropped:
+            print(f"held back {len(dropped)} page(s) from {site.name}; the rest can publish")
     n = len(pages(site))
     if not problems:
-        print(f"site check passed: {n} pages; third-party files self-hosted or pinned by hash; pages work")
+        works = "pages work" if browser else "markup only, not opened in a browser"
+        print(f"site check passed: {n} pages; third-party files self-hosted or pinned by hash; {works}")
         return 0
     for where, bad in problems.items():
         for b in bad:
