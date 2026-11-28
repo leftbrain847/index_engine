@@ -137,11 +137,14 @@ jobs:
             [ -n "$site_repo" ] && [ -d "$RUNNER_TEMP/$dir" ] || continue
             extra=()
             if [ "$dir" = site ]; then
-              extra=(--drop-bad "$dropped"); sprint_prefix="https://$OWNER.github.io/$site_repo/"
+              extra=(--drop-bad "$dropped")
+              # the same base URL build_showcase.py links the homepage to
+              sprint_prefix=$(SITE_REPO="$site_repo" python -c "import os,yaml;c=yaml.safe_load(open('index.yml'))['config'];print((c.get('showcase') or {}).get('sprint_url') or 'https://%s.github.io/%s/' % (os.environ['OWNER'], os.environ['SITE_REPO']))")
             elif [ -s "$dropped" ] && [ -n "${sprint_prefix:-}" ]; then
               tools/quiet.sh "$RUNNER_TEMP/site_check.log" "unlink held-back pages on $site_repo" python tools/unlink.py "$RUNNER_TEMP/$dir" "$dropped" "$sprint_prefix" || { failed="$failed $site_repo"; continue; }
             fi
             if ! tools/quiet.sh "$RUNNER_TEMP/site_check.log" "check $site_repo" python tools/site_check.py "$RUNNER_TEMP/$dir" "${extra[@]}"; then
+              [ "$dir" = site ] && : > "$dropped"   # the sprint site isn't published at all: keep every link as it was
               failed="$failed $site_repo"; continue
             fi
             if [ -z "$site_token" ]; then echo "::notice::SITE_TOKEN not set; $site_repo checked but not published"; continue; fi

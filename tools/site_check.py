@@ -131,15 +131,13 @@ def drop_bad(site: Path, problems: dict[str, list[str]], max_drop: int = MAX_DRO
 
 
 def main(argv: list[str]) -> int:
-    args = list(argv)
-    browser = "--no-browser" not in args
-    drop_to = None
-    if "--drop-bad" in args:
-        i = args.index("--drop-bad")
-        drop_to = Path(args[i + 1])
-        del args[i:i + 2]
-    args = [a for a in args if a != "--no-browser"]
-    site = Path(args[0])
+    import argparse
+    ap = argparse.ArgumentParser(prog="site_check.py")
+    ap.add_argument("site", type=Path)
+    ap.add_argument("--no-browser", action="store_true", help="markup checks only")
+    ap.add_argument("--drop-bad", type=Path, metavar="LIST_FILE", help="hold back failing pages, list them here")
+    a = ap.parse_args(argv)
+    site, browser, drop_to = a.site, not a.no_browser, a.drop_bad
     cfg = ((yaml.safe_load((HERE / "index.yml").read_text()) or {}).get("config") or {}).get("vendor") or {}
     problems = check(site, Vendor.load(), browser=browser, data_hosts=set(cfg.get("allow_data_hosts") or []))
     if drop_to is not None:

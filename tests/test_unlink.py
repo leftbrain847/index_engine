@@ -77,3 +77,19 @@ def test_front_page_or_too_many_failures_block_the_site_instead(tmp_path):
         (many / f"p{i}.html").write_text(bad)
     assert site_check.main([str(many), "--no-browser", "--drop-bad", str(tmp_path.parent / "d2.txt")]) == 1
     assert len(list(many.glob("*.html"))) == site_check.MAX_DROP + 1
+
+
+def test_review_cases_data_href_unrelated_labels_and_subfolders(tmp_path):
+    out = unlink_text('<a data-href="x.html" href="y.html">Y</a><div data-k="" data-kl="keep"></div>', ["x.html"])
+    assert out == '<a data-href="" href="y.html">Y</a><div data-k="" data-kl="keep"></div>'   # link to y stays
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "x.html").write_text("<p>a different page</p>")
+    (tmp_path / "sub" / "index.html").write_text('<a href="x.html">mine</a><a href="../x.html">root</a>')
+    unlink(tmp_path, ["x.html"])
+    assert (tmp_path / "sub" / "index.html").read_text() == '<a href="x.html">mine</a>'
+
+
+def test_bad_arguments_exit_cleanly(tmp_path):
+    import pytest
+    with pytest.raises(SystemExit):
+        site_check.main([str(tmp_path), "--drop-bad"])
