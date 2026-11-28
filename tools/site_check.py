@@ -154,7 +154,8 @@ def main(argv: list[str]) -> int:
             print(f"held back {len(dropped)} page(s) from {site.name}; the rest can publish")
     n = len(pages(site))
     if not problems:
-        print(f"site check passed: {n} pages; third-party files self-hosted or pinned by hash; pages work")
+        works = "pages work" if browser else "markup only, not opened in a browser"
+        print(f"site check passed: {n} pages; third-party files self-hosted or pinned by hash; {works}")
         return 0
     for where, bad in problems.items():
         for b in bad:
